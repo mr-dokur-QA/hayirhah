@@ -93,11 +93,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     try {
       final template = _templates[_selectedTemplate]!;
       int targetCount = template['count'];
+      
+      // Kullanıcı boş bıraktıysa şablon değerlerini kullan
+      final title = _titleController.text.trim().isEmpty 
+          ? template['title'] 
+          : _titleController.text.trim();
+      final description = _descriptionController.text.trim().isEmpty 
+          ? template['description'] 
+          : _descriptionController.text.trim();
 
       // Try backend API first
       final result = await _apiService.createGroup(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
+        title: title,
+        description: description,
         type: _selectedTemplate!,
         targetCount: targetCount,
         isPrivate: _isPrivate,
@@ -116,8 +124,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       } else if (mounted) {
         // Fallback to local storage if API fails
         final group = await _storageService.createGroup(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
+          title: title,
+          description: description,
           type: _selectedTemplate!,
           targetCount: targetCount,
           isPrivate: _isPrivate,
@@ -306,50 +314,64 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 
-                                // Title field
+                                // Title field - etkinliğe özel placeholder
                                 TextFormField(
                                   controller: _titleController,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
                                   decoration: InputDecoration(
                                     labelText: 'Etkinlik Başlığı',
                                     labelStyle: const TextStyle(color: Colors.white70),
-                                    hintText: 'Örn: Ramazan Hatmi',
-                                    hintStyle: TextStyle(color: Colors.white.withAlpha(80)),
+                                    hintText: _getExampleTitle(_selectedTemplate),
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withAlpha(100),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white.withAlpha(10),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: Colors.white.withAlpha(50)),
+                                      borderSide: BorderSide(color: Colors.white.withAlpha(60)),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: Colors.amber),
+                                      borderSide: const BorderSide(color: Colors.amber, width: 2),
+                                    ),
+                                    errorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Colors.redAccent),
+                                    ),
+                                    focusedErrorBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Colors.redAccent, width: 2),
                                     ),
                                     prefixIcon: const Icon(Icons.title, color: Colors.white70),
                                   ),
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'Başlık giriniz';
-                                    }
-                                    return null;
-                                  },
+                                  // Boş bırakılırsa şablon değeri kullanılacak
+                                  validator: (value) => null, // Boş olabilir, şablon değeri kullanılır
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Description field
+                                // Description field - etkinliğe özel placeholder
                                 TextFormField(
                                   controller: _descriptionController,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
                                   decoration: InputDecoration(
                                     labelText: 'Açıklama (İsteğe bağlı)',
                                     labelStyle: const TextStyle(color: Colors.white70),
-                                    hintText: 'Etkinlik hakkında detaylı bilgi',
-                                    hintStyle: TextStyle(color: Colors.white.withAlpha(80)),
+                                    hintText: _getExampleDescription(_selectedTemplate),
+                                    hintStyle: TextStyle(
+                                      color: Colors.white.withAlpha(100),
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white.withAlpha(10),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(color: Colors.white.withAlpha(50)),
+                                      borderSide: BorderSide(color: Colors.white.withAlpha(60)),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
-                                      borderSide: const BorderSide(color: Colors.amber),
+                                      borderSide: const BorderSide(color: Colors.amber, width: 2),
                                     ),
                                     prefixIcon: const Icon(Icons.description, color: Colors.white70),
                                   ),
@@ -631,8 +653,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         onTap: () {
           setState(() {
             _selectedTemplate = templateKey;
-            _titleController.text = template['title'];
-            _descriptionController.text = template['description'];
+            // Placeholder olarak gösterilecek, controller'ı boş bırak
+            _titleController.clear();
+            _descriptionController.clear();
           });
         },
         child: Container(
@@ -778,6 +801,46 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         return 'İhlas Suresi okuma';
       default:
         return '';
+    }
+  }
+
+  // Her etkinlik için örnek başlık
+  String _getExampleTitle(String? templateKey) {
+    switch (templateKey) {
+      case 'hatim':
+        return 'Ramazan Aile Hatmi';
+      case 'tefriciye':
+        return 'Şifa Niyetine Tefriciye';
+      case 'fetih':
+        return 'Fetih Suresi Kampanyası';
+      case 'yasin':
+        return 'Cuma Yasin Okuma';
+      case 'cevsen':
+        return 'Haftalık Cevşen';
+      case '1000_ihlas':
+        return 'Kandil Gecesi İhlas';
+      default:
+        return 'Etkinlik adı girin';
+    }
+  }
+
+  // Her etkinlik için örnek açıklama
+  String _getExampleDescription(String? templateKey) {
+    switch (templateKey) {
+      case 'hatim':
+        return 'Ailemizle birlikte Ramazan hatmi yapıyoruz';
+      case 'tefriciye':
+        return 'Hastalarımız için şifa niyetine okuyoruz';
+      case 'fetih':
+        return 'Zafer ve başarı için Fetih Suresi';
+      case 'yasin':
+        return 'Her Cuma Yasin-i Şerif okuyoruz';
+      case 'cevsen':
+        return 'Koruma ve bereket için Cevşen';
+      case '1000_ihlas':
+        return 'Kandil gecesi 1000 İhlas kampanyası';
+      default:
+        return 'Etkinlik açıklaması';
     }
   }
 }
