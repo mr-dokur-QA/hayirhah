@@ -473,158 +473,293 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }
 
   Widget _buildTemplateGrid() {
+    // Eğer bir şablon seçildiyse sadece onu göster
+    if (_selectedTemplate != null) {
+      final template = _templates[_selectedTemplate]!;
+      return _buildSelectedTemplateCard(_selectedTemplate!, template);
+    }
+    
+    // Seçim yapılmadıysa tüm şablonları göster
     return Column(
       children: _templates.entries.map((entry) {
         final templateKey = entry.key;
         final template = entry.value;
-        final isSelected = _selectedTemplate == templateKey;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTemplate = templateKey;
-                _titleController.text = template['title'];
-                _descriptionController.text = template['description'];
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isSelected
-                      ? [
-                          template['color'].withAlpha(60),
-                          template['color'].withAlpha(30),
-                        ]
-                      : [
-                          Colors.white.withAlpha(15),
-                          Colors.white.withAlpha(8),
-                        ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                border: Border.all(
-                  color: isSelected 
-                      ? template['color'] 
-                      : Colors.white.withAlpha(25),
-                  width: isSelected ? 2 : 1,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: template['color'].withAlpha(60),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Row(
-                children: [
-                  // Icon container
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          template['color'].withAlpha(180),
-                          template['color'],
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: template['color'].withAlpha(80),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      template['icon'],
-                      size: 26,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Text content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          template['title'],
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? template['color'] : Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          _getShortDescription(templateKey),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isSelected 
-                                ? Colors.white.withAlpha(200)
-                                : Colors.white.withAlpha(150),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Count badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? template['color']
-                          : Colors.white.withAlpha(20),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      template['count'] > 0
-                          ? '${template['count']} ${templateKey == 'hatim' ? 'Cüz' : ''}'
-                          : 'Özel',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : Colors.white70,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Selection indicator
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSelected ? template['color'] : Colors.transparent,
-                      border: Border.all(
-                        color: isSelected ? template['color'] : Colors.white30,
-                        width: 2,
-                      ),
-                    ),
-                    child: isSelected
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+        return _buildTemplateCard(templateKey, template);
       }).toList(),
     );
+  }
+
+  Widget _buildSelectedTemplateCard(String templateKey, Map<String, dynamic> template) {
+    return Column(
+      children: [
+        // Seçili etkinlik kartı
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                template['color'].withAlpha(80),
+                template['color'].withAlpha(40),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: template['color'],
+              width: 2,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: template['color'].withAlpha(60),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      template['color'].withAlpha(200),
+                      template['color'],
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: template['color'].withAlpha(100),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  template['icon'],
+                  size: 26,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      template['title'],
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: template['color'],
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _getShortDescription(templateKey),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withAlpha(200),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Count badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: template['color'],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  template['count'] > 0
+                      ? '${template['count']} ${templateKey == 'hatim' ? 'Cüz' : ''}'
+                      : 'Özel',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Değiştir butonu
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedTemplate = null;
+                    _titleController.clear();
+                    _descriptionController.clear();
+                  });
+                },
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horiz,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                tooltip: 'Etkinlik Değiştir',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTemplateCard(String templateKey, Map<String, dynamic> template) {
+    // Her etkinlik için hafif farklı arka plan tonu
+    final bgAlpha = _getBackgroundAlpha(templateKey);
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedTemplate = templateKey;
+            _titleController.text = template['title'];
+            _descriptionController.text = template['description'];
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                template['color'].withAlpha(bgAlpha),
+                template['color'].withAlpha(bgAlpha ~/ 2),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            border: Border.all(
+              color: template['color'].withAlpha(60),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      template['color'].withAlpha(180),
+                      template['color'],
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: template['color'].withAlpha(80),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  template['icon'],
+                  size: 26,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      template['title'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _getShortDescription(templateKey),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withAlpha(180),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Count badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: template['color'].withAlpha(50),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: template['color'].withAlpha(100),
+                  ),
+                ),
+                child: Text(
+                  template['count'] > 0
+                      ? '${template['count']} ${templateKey == 'hatim' ? 'Cüz' : ''}'
+                      : 'Özel',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: template['color'],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Arrow icon
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: template['color'].withAlpha(180),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  int _getBackgroundAlpha(String templateKey) {
+    // Her etkinlik için farklı arka plan yoğunluğu
+    switch (templateKey) {
+      case 'hatim':
+        return 35;
+      case 'tefriciye':
+        return 30;
+      case 'fetih':
+        return 32;
+      case 'yasin':
+        return 28;
+      case 'cevsen':
+        return 30;
+      case '1000_ihlas':
+        return 33;
+      default:
+        return 25;
+    }
   }
 
   String _getShortDescription(String templateKey) {
