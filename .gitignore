@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+build/
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +44,37 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS/macOS CocoaPods
+**/ios/Pods/
+**/macos/Pods/
+**/ios/Podfile.lock
+**/macos/Podfile.lock
+ios/.symlinks/
+macos/.symlinks/
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/dev.log
+backend/logs/
+backend/*.log
+
+# Generated Flutter files
+ios/Flutter/flutter_export_environment.sh
+linux/flutter/ephemeral/
+
+# Gradle
+.gradle/
+android/.gradle/
+android/local.properties
+android/gradlew
+android/gradlew.bat
+
+# Misc
+*.tgz
+.cache/
+.parcel-cache/
