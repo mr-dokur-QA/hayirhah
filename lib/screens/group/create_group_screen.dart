@@ -156,7 +156,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             type: _selectedTemplate!,
             targetCount: targetCount,
             isPrivate: _isPrivate,
-            deadline: _deadline?.toIso8601String(),
+            // Backend expects YYYY-MM-DD
+            deadline: _deadline != null ? _deadline!.toIso8601String().split('T')[0] : null,
           );
           print('API result: $result');
 

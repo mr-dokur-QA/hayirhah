@@ -79,6 +79,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             final groupData = apiGroup['data'] ?? apiGroup;
             final tasksData = apiTasks;
 
+            final members = (groupData['members'] as List?) ?? const [];
+            final participantIds = members
+                .map((m) => (m is Map ? m['userId'] ?? m['user']?['id'] : null))
+                .where((id) => id != null)
+                .map((id) => id.toString())
+                .toList();
+
             final group = Group(
               id: groupData['id'],
               title: groupData['title'],
@@ -92,7 +99,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               inviteCode: groupData['inviteCode'],
               isActive: groupData['isActive'] ?? true,
               createdAt: DateTime.parse(groupData['createdAt']),
-              participantIds: List<String>.from(groupData['participantIds'] ?? []),
+              participantIds: List<String>.from(groupData['participantIds'] ?? participantIds),
             );
 
             final tasks = tasksData.map<Task>((taskData) => Task(

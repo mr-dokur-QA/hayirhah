@@ -6,9 +6,9 @@ import crypto from 'crypto';
 // Group types
 const GROUP_TYPES = ['hatim', 'yasin', 'fetih', 'tefriciye', 'cevsen', 'custom_parca', 'custom_sayi', '1000_ihlas'] as const;
 
-// Task types: 'sectioned' = each item is a separate task (hatim, cevsen), 'numbered' = just a counter (tefriciye, fetih, 1000_ihlas)
-const SECTIONED_TYPES = ['hatim', 'yasin', 'cevsen', 'custom_parca'] as const;
-const NUMBERED_TYPES = ['tefriciye', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
+// Task types: 'sectioned' = each item is a separate task (hatim, cevsen), 'numbered' = just a counter (tefriciye, yasin, fetih, 1000_ihlas)
+const SECTIONED_TYPES = ['hatim', 'cevsen', 'custom_parca'] as const;
+const NUMBERED_TYPES = ['tefriciye', 'yasin', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
 
 // Validation schemas
 const createGroupSchema = z.object({
@@ -128,7 +128,6 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
     // Generate unique invite code
     const inviteCode = await generateInviteCode();
 
-    // Create group
     const createData: any = {
       title,
       type,
@@ -138,46 +137,64 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
       inviteCode,
       creatorId: req.user.userId,
     };
-    
+
     if (description !== undefined) {
       createData.description = description;
     }
 
-    const group = await prisma.group.create({
-      data: createData,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
+    // Create group + add creator membership + create tasks atomically,
+    // then re-fetch group so member counts are correct.
+    const group = await prisma.$transaction(async (tx) => {
+      const created = await tx.group.create({
+        data: createData,
+      });
+
+      await tx.groupMember.create({
+        data: {
+          groupId: created.id,
+          userId: req.user!.userId,
+          role: 'creator',
         },
-        _count: {
-          select: {
-            members: true,
-            tasks: true,
+      });
+
+      // Create tasks for the group
+      // (no tasks for numbered types)
+      await (async () => {
+        // inline createGroupTasks but use tx
+        if (!SECTIONED_TYPES.includes(type as any)) return;
+
+        const tasks: any[] = [];
+        if (type === 'cevsen') {
+          const taskCount = 20;
+          for (let i = 1; i <= taskCount; i++) {
+            tasks.push({ groupId: created.id, taskIndex: i, status: 'available', amount: 5 });
+          }
+        } else {
+          for (let i = 1; i <= targetCount; i++) {
+            tasks.push({ groupId: created.id, taskIndex: i, status: 'available' });
+          }
+        }
+        if (tasks.length > 0) {
+          await tx.task.createMany({ data: tasks });
+        }
+      })();
+
+      const refetched = await tx.group.findUnique({
+        where: { id: created.id },
+        include: {
+          creator: { select: { id: true, username: true, email: true } },
+          members: {
+            include: { user: { select: { id: true, username: true } } },
+            orderBy: { joinedAt: 'asc' },
           },
+          _count: { select: { members: true, tasks: true } },
         },
-      },
+      });
+
+      return refetched!;
     });
 
-    // Add creator as admin member
-    await prisma.groupMember.create({
-      data: {
-        groupId: group.id,
-        userId: req.user.userId,
-        role: 'creator',
-      },
-    });
-
-    // Create tasks for the group
-    await createGroupTasks(group.id, type, targetCount);
-
-    res.status(201).json({
-      message: 'Group created successfully',
-      data: group,
-    });
+    res.status(201).json({ message: 'Group created successfully', data: group });
   } catch (error) {
     console.error('Create group error:', error);
     res.status(500).json({

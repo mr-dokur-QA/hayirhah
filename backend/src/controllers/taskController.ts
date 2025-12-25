@@ -5,8 +5,9 @@ import { z } from 'zod';
 // Task status types
 const TASK_STATUSES = ['available', 'assigned', 'completed'] as const;
 
-// Numbered (counter) group types - no per-item tasks
-const NUMBERED_TYPES = ['tefriciye', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
+// Numbered (counter) group types - no per-item tasks (new groups)
+// Backward compatible: if a group already has Task rows, we keep treating it as sectioned.
+const NUMBERED_TYPES = ['tefriciye', 'yasin', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
 
 // Validation schemas
 const assignTaskSchema = z.union([
@@ -83,8 +84,13 @@ export const getGroupTasks = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // For numbered groups, return numbered task assignments as task-like objects
+    // For numbered groups, return numbered task assignments as task-like objects.
+    // Backward compat: if tasks already exist, keep returning tasks.
     if (NUMBERED_TYPES.includes(group.type as any)) {
+      const existingTaskCount = await prisma.task.count({ where: { groupId } });
+      if (existingTaskCount > 0) {
+        // fall through to legacy task listing
+      } else {
       const assignments = await prisma.numberedTaskAssignment.findMany({
         where: { groupId },
         include: {
@@ -116,6 +122,7 @@ export const getGroupTasks = async (req: Request, res: Response): Promise<void> 
         },
       });
       return;
+      }
     }
 
     const pageNum = parseInt(page as string);
@@ -252,6 +259,10 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
     }
 
     if (NUMBERED_TYPES.includes(group.type as any)) {
+      const existingTaskCount = await prisma.task.count({ where: { groupId } });
+      if (existingTaskCount > 0) {
+        // Legacy sectioned group: expect taskId
+      } else {
       const amount = body.amount as number | undefined;
       if (!amount || amount < 1) {
         res.status(400).json({
@@ -300,6 +311,7 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
         data: assignment,
       });
       return;
+      }
     }
 
     const taskId = body.taskId as string | undefined;
@@ -432,6 +444,10 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
     }
 
     if (NUMBERED_TYPES.includes(group.type as any)) {
+      const existingTaskCount = await prisma.task.count({ where: { groupId } });
+      if (existingTaskCount > 0) {
+        // Legacy sectioned group: treat as normal task completion
+      } else {
       // taskId is NumberedTaskAssignment.id
       const assignment = await prisma.numberedTaskAssignment.findUnique({
         where: { id: taskId },
@@ -476,6 +492,7 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
         data: updatedAssignment,
       });
       return;
+      }
     }
 
     // Get the task

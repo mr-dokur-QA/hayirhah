@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
+import '../../core/network/connectivity_service.dart';
 import '../group/group_detail_screen.dart';
 
 class JoinGroupScreen extends StatefulWidget {
@@ -13,6 +15,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _inviteCodeController = TextEditingController();
   final _storageService = StorageService();
+  final _apiService = ApiService();
   bool _isLoading = false;
 
   @override
@@ -29,9 +32,38 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     });
 
     try {
-      final group = await _storageService.joinGroupByInviteCode(
-        _inviteCodeController.text.trim().toUpperCase(),
-      );
+      final inviteCode = _inviteCodeController.text.trim().toUpperCase();
+
+      // Prefer backend when online
+      final connectivity = ConnectivityService.instance;
+      if (connectivity.isOnline) {
+        final token = await _storageService.getAuthToken();
+        if (token != null) {
+          _apiService.setAuthToken(token);
+        }
+
+        final result = await _apiService.joinGroup(inviteCode);
+        if (result != null) {
+          final groupData = result['data'] ?? result;
+          final groupId = groupData['id'];
+          if (groupId != null && mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => GroupDetailScreen(groupId: groupId)),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${groupData['title'] ?? 'Etkinlik'} etkinliğine katıldınız!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            return;
+          }
+        }
+      }
+
+      // Fallback to local storage (offline / API fail)
+      final group = await _storageService.joinGroupByInviteCode(inviteCode);
 
       if (group != null && mounted) {
         Navigator.pushReplacement(
@@ -115,8 +147,9 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return 'Davet kodunu girin';
                   }
-                  if (value.trim().length != 6) {
-                    return 'Davet kodu 6 haneli olmalıdır';
+              final len = value.trim().length;
+              if (len != 6 && len != 10) {
+                return 'Davet kodu 6 veya 10 haneli olmalıdır';
                   }
                   return null;
                 },

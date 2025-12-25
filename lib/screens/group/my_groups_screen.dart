@@ -58,12 +58,22 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             inviteCode: groupData['inviteCode'],
             isActive: groupData['isActive'] ?? true,
             createdAt: DateTime.parse(groupData['createdAt']),
-            participantIds: List<String>.from(
-              groupData['participantIds'] ??
-                  ((groupData['creatorId'] != null && groupData['creatorId'].toString().isNotEmpty)
-                      ? [groupData['creatorId']]
-                      : []),
-            ),
+            participantIds: () {
+              if (groupData['participantIds'] != null) {
+                return List<String>.from(groupData['participantIds']);
+              }
+              final members = (groupData['members'] as List?) ?? const [];
+              final ids = members
+                  .map((m) => (m is Map ? m['userId'] ?? m['user']?['id'] : null))
+                  .where((id) => id != null)
+                  .map((id) => id.toString())
+                  .toList();
+              if (ids.isNotEmpty) return ids;
+              if (groupData['creatorId'] != null && groupData['creatorId'].toString().isNotEmpty) {
+                return [groupData['creatorId'].toString()];
+              }
+              return <String>[];
+            }(),
           )).toList();
           
           setState(() {
