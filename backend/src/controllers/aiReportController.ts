@@ -103,7 +103,7 @@ export const generateReport = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content || 'Rapor oluşturulamadı.';
 
     res.status(200).json({
