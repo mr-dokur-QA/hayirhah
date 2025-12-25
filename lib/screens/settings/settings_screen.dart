@@ -6,6 +6,8 @@ import '../../services/storage_service.dart';
 import '../../services/theme_service.dart';
 import '../../services/prayer_times_service.dart';
 import '../../services/location_service.dart';
+import '../../services/api_service.dart';
+import '../auth/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final NotificationService _notificationService = NotificationService();
   final ThemeService _themeService = ThemeService();
   final LocationService _locationService = LocationService();
+  final ApiService _apiService = ApiService();
   late NotificationPreferences _preferences;
   bool _isLoading = true;
   bool _isPlayingPreview = false;
@@ -90,10 +93,114 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildAzanSection(),
           const SizedBox(height: 24),
           _buildPrayerNotificationsSection(),
+          const SizedBox(height: 24),
+          _buildAccountSection(),
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  Widget _buildAccountSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.person,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Hesap',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.logout,
+                color: Colors.red,
+              ),
+            ),
+            title: const Text('Çıkış Yap'),
+            subtitle: const Text('Hesabınızdan güvenli çıkış yapın'),
+            onTap: _confirmLogout,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Çıkış Yap'),
+        content: const Text('Çıkış yapmak istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Çıkış Yap'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await _logout();
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      final refreshToken = await _storage.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _apiService.logout(refreshToken);
+      }
+    } catch (_) {
+      // ignore - still clear local session
+    } finally {
+      await _storage.clearAuthTokens();
+      _storage.logout();
+      _apiService.clearAuthToken();
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   Widget _buildLocationSection() {
