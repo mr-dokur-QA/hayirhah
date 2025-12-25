@@ -620,6 +620,42 @@ export const getWeeklyStats = async (req: Request, res: Response): Promise<void>
 };
 
 /**
+ * Get all prayer tracking records for the current user
+ */
+export const getAllRecords = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        error: 'Authentication required',
+        message: 'No authenticated user',
+      });
+      return;
+    }
+
+    const records = await prisma.prayerTracking.findMany({
+      where: {
+        userId: req.user.userId,
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    res.status(200).json({
+      message: 'All records retrieved successfully',
+      data: records,
+      count: records.length,
+    });
+  } catch (error) {
+    console.error('Get all records error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to get all records',
+    });
+  }
+};
+
+/**
  * Get monthly statistics
  */
 export const getMonthlyStats = async (req: Request, res: Response): Promise<void> => {

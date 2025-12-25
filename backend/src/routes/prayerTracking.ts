@@ -9,6 +9,7 @@ import {
   getDateRangeRecords,
   getWeeklyStats,
   getMonthlyStats,
+  getAllRecords,
 } from '../controllers/prayerTrackingController';
 import { authenticate, rateLimit } from '../middleware/auth';
 
@@ -118,6 +119,13 @@ router.put('/:date/kaza', authenticate, prayerRateLimit, updateKazaPrayers);
  * @body    {object} healthData - Health tracking data
  */
 router.put('/:date/health', authenticate, prayerRateLimit, updateHealthData);
+
+/**
+ * @route   GET /api/prayer-tracking/all
+ * @desc    Get all prayer tracking records for the current user
+ * @access  Private
+ */
+router.get('/all', authenticate, statsRateLimit, getAllRecords);
 
 /**
  * @route   GET /api/prayer-tracking/range/records

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../services/prayer_tracking_service.dart';
 import '../../models/user.dart';
 import '../dashboard/dashboard_screen.dart';
 
@@ -47,6 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
             );
             _storageService.setCurrentUser(user);
             await _storageService.saveCurrentUserId(user.id);
+          }
+          // Sync prayer tracking data from backend (for auto-login)
+          try {
+            final prayerTrackingService = PrayerTrackingService();
+            await prayerTrackingService.syncFromBackend();
+          } catch (e) {
+            debugPrint('Prayer tracking sync error (non-critical): $e');
           }
           // Token is valid, navigate to dashboard
           Navigator.pushReplacement(
@@ -114,6 +122,14 @@ class _LoginScreenState extends State<LoginScreen> {
             createdAt: DateTime.parse(userData['createdAt'] ?? DateTime.now().toIso8601String()),
           );
           _storageService.setCurrentUser(user);
+        }
+
+        // Sync prayer tracking data from backend after successful login
+        try {
+          final prayerTrackingService = PrayerTrackingService();
+          await prayerTrackingService.syncFromBackend();
+        } catch (e) {
+          debugPrint('Prayer tracking sync error (non-critical): $e');
         }
 
         Navigator.pushReplacement(
@@ -212,6 +228,14 @@ class _LoginScreenState extends State<LoginScreen> {
             createdAt: DateTime.parse(userData['createdAt'] ?? DateTime.now().toIso8601String()),
           );
           _storageService.setCurrentUser(user);
+        }
+
+        // Sync prayer tracking data from backend after successful registration
+        try {
+          final prayerTrackingService = PrayerTrackingService();
+          await prayerTrackingService.syncFromBackend();
+        } catch (e) {
+          debugPrint('Prayer tracking sync error (non-critical): $e');
         }
 
         Navigator.pushReplacement(
