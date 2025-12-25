@@ -212,13 +212,14 @@ function buildPrompt(data: Record<string, any>, type: string, date: Date): strin
 
   const commonRules = `
 ONEMLI KURALLAR:
-- Samimi, sicak ve arkadas gibi bir dil kullan
+- Samimi, sicak ve arkadas gibi bir dil kullan (Hayirhah modunda bir arkadas gibi)
 - ASLA yargilayici, elestiren veya suclayici olma
 - Kullaniciyi kotu hissettiren ifadeler YASAK
 - Her zaman tesvik edici ve destekleyici ol
 - Kullanicinin cabasini takdir et
 - Sadece Turkce karakterler ve cumleler kullan
-- Raporun sonunda MUTLAKA kullaniciya dua et (ornek: Allah ibadetlerinizi kabul etsin, Rabbim kolaylastirsim gibi)
+- Bolum basliklarinda ve uygun yerlerde EMOJI kullan (🌟 ✨ 💪 🤲 📿 🕌 ❤️ 🙏 📖 gibi)
+- Raporun sonunda MUTLAKA kullaniciya dua et
 - Raporun sonunda konuyla ilgili kisa bir hadis veya ayet meali ekle ve kaynagini belirt
 `;
 
@@ -238,15 +239,29 @@ GUNLUK VERILER:
 - Teheccud: ${data.teheccudCount > 0 ? 'Evet' : 'Henuz yok'}
 - Duha: ${data.duhaCount > 0 ? 'Evet' : 'Henuz yok'}
 
-RAPOR FORMATI:
-1. Sicak bir selamlama (Selamun aleykum veya Hayirli gunler gibi)
-2. Gunun ozeti - samimi ve tesvik edici bir dille anlat
-3. Basarilarini kutla, cabalarini takdir et
-4. Yarin icin guzel bir motivasyon cumlesi
-5. Icten bir dua ile kapatis (Allah kabul etsin, Rabbim kolaylastirsin gibi)
-6. Konuyla ilgili kisa bir hadis veya ayet meali ve kaynagi
+RAPOR FORMATI (bu bolum basliklarini kullan):
 
-NOT: Maksimum 120 kelime. Arkadas gibi sicak ol. Dua ve hadis/ayet eklemeyi unutma!
+🌟 SELAMLAMA
+- Sicak bir selamlama ile basla
+
+📊 GUNUN OZETI  
+- Gunun ibadet ozetini samimi bir dille anlat
+
+💪 GUCLU YONLERIN
+- Bugunku basarilarini ve guzel yonlerini vurgula
+- En az 1-2 madde halinde yaz
+
+🌱 GELISTIRILECEK YONLER
+- Yargilama yapmadan, nazikce ve tesvik edici sekilde onerilerde bulun
+- Eger her sey mukemmelse, bunu da kutla
+
+🤲 DUA
+- Icten ve guzel bir dua ile kapatis (Allah kabul etsin, Rabbim kolaylastirsin gibi)
+
+📖 ILHAM
+- Konuyla ilgili kisa bir hadis veya ayet meali ve kaynagi
+
+NOT: Maksimum 150 kelime. Arkadas gibi sicak ol, emojileri kullan!
 `;
   } else if (type === 'weekly') {
     return `
@@ -258,8 +273,9 @@ HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftasi
 
 HAFTALIK VERILER:
 - Kayitli Gun: ${data.totalDays}
-- Farz Namaz: ${data.completedFard}/${data.totalFard}
+- Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
 - En Duzenli Vakit: ${data.leastMissedPrayer}
+- En Zorlandigi Vakit: ${data.mostMissedPrayer}
 - Sunnet Orani: %${data.sunnetRate}
 - Tesbihat Orani: %${data.tesbihatRate}
 
@@ -270,15 +286,31 @@ NAFILE NAMAZLAR:
 - Tesbih Namazi: ${data.tespihCount} gun
 - Kaza: ${data.totalKaza} adet
 
-RAPOR FORMATI:
-1. Sicak bir selamlama
-2. Haftanin genel ozeti - samimi bir dille
-3. Guclu yonlerini ve basarilarini vurgula (en az 2 madde)
-4. Gelecek hafta icin nazik oneriler (zorunluluk degil, davet seklinde)
-5. Icten bir dua ile kapatis (Allah ibadetlerinizi kabul etsin gibi)
-6. Ilham verici bir hadis veya ayet meali ve kaynagi
+RAPOR FORMATI (bu bolum basliklarini kullan):
 
-NOT: Maksimum 180 kelime. Arkadas gibi samimi ol. Dua ve hadis/ayet eklemeyi unutma!
+🌟 SELAMLAMA
+- Sicak ve samimi bir selamlama
+
+📊 HAFTANIN OZETI
+- Genel degerlendirme, samimi bir dille
+
+💪 GUCLU YONLERIN
+- Bu haftaki basarilari ve parlayan yonleri vurgula
+- En az 2-3 madde halinde yaz
+- Hangi vakitte cok basarili, nafile namazlar, tesbihat vs.
+
+🌱 GELISTIRILECEK YONLER
+- Nazikce ve tesvik edici sekilde oneriler
+- Zorunluluk degil, davet seklinde yaz
+- Eger cok basariliysa, bunu kutla
+
+🤲 DUA
+- Icten ve guzel bir dua ile kapatis
+
+📖 ILHAM
+- Ilham verici bir hadis veya ayet meali ve kaynagi
+
+NOT: Maksimum 200 kelime. Arkadas gibi samimi ol, emojileri kullan!
 `;
   } else {
     return `
@@ -290,7 +322,9 @@ AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
 
 AYLIK VERILER:
 - Kayitli Gun: ${data.totalDays}
-- Farz Namaz: ${data.completedFard}/${data.totalFard}
+- Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
+- En Duzenli Vakit: ${data.leastMissedPrayer}
+- En Zorlandigi Vakit: ${data.mostMissedPrayer}
 - Sunnet Orani: %${data.sunnetRate}
 - Tesbihat Orani: %${data.tesbihatRate}
 
@@ -301,15 +335,34 @@ NAFILE NAMAZLAR:
 - Tesbih Namazi: ${data.totalTespih || data.tespihCount} gun
 - Toplam Kaza: ${data.totalKaza} adet
 
-RAPOR FORMATI:
-1. Sicak bir selamlama
-2. Ayin genel degerlendirmesi - samimi ve tesvik edici
-3. Ayin one cikan basarilari (kutlama tonu, en az 3 madde)
-4. Gelecek ay icin guzel oneriler (davet seklinde, baski degil)
-5. Icten ve guzel bir dua ile kapatis (Rabbim ibadetlerinizi makbul kilsin gibi)
-6. Ilham verici bir hadis veya ayet meali ve kaynagi
+RAPOR FORMATI (bu bolum basliklarini kullan):
 
-NOT: Maksimum 220 kelime. Arkadas gibi sicak ve samimi ol. Dua ve hadis/ayet eklemeyi unutma!
+🌟 SELAMLAMA
+- Sicak ve samimi bir selamlama
+
+📊 AYIN OZETI
+- Genel degerlendirme, samimi ve tesvik edici
+
+💪 GUCLU YONLERIN (Ayin yildizlari)
+- Bu ayki basarilari ve one cikan yonleri vurgula
+- En az 3-4 madde halinde yaz
+- Hangi vakitler guclu, nafile namazlar, tesbihat, kaza performansi vs.
+
+🌱 GELISTIRILECEK YONLER
+- Nazikce ve tesvik edici sekilde oneriler
+- Gelecek ay icin guzel hedefler onerebilirsin
+- Davet seklinde yaz, baski yapma
+
+📈 GELECEK AY ICIN HEDEFLER
+- 1-2 kucuk ve ulasildabilir hedef oner
+
+🤲 DUA
+- Icten ve guzel bir dua ile kapatis (Rabbim ibadetlerinizi makbul kilsin gibi)
+
+📖 ILHAM
+- Ilham verici bir hadis veya ayet meali ve kaynagi
+
+NOT: Maksimum 250 kelime. Arkadas gibi sicak ve samimi ol, emojileri kullan!
 `;
   }
 }
