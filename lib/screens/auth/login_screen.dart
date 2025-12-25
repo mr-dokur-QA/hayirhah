@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../models/user.dart';
 import '../dashboard/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -89,6 +90,19 @@ class _LoginScreenState extends State<LoginScreen> {
         
         final userData = result['user'] ?? result['data']?['user'];
         final username = userData?['username'] ?? 'Kullanıcı';
+
+        // Set current user in storage service
+        if (userData != null) {
+          final user = User(
+            id: userData['id'],
+            username: userData['username'] ?? username,
+            email: userData['email'] ?? _emailController.text,
+            profilePhotoUrl: userData['profilePhotoUrl'],
+            createdAt: DateTime.parse(userData['createdAt'] ?? DateTime.now().toIso8601String()),
+          );
+          _storageService.setCurrentUser(user);
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -174,6 +188,19 @@ class _LoginScreenState extends State<LoginScreen> {
         
         final userData = result['user'] ?? result['data']?['user'];
         final username = userData?['username'] ?? 'Kullanıcı';
+
+        // Set current user in storage service
+        if (userData != null) {
+          final user = User(
+            id: userData['id'],
+            username: userData['username'] ?? username,
+            email: userData['email'] ?? _emailController.text,
+            profilePhotoUrl: userData['profilePhotoUrl'],
+            createdAt: DateTime.parse(userData['createdAt'] ?? DateTime.now().toIso8601String()),
+          );
+          _storageService.setCurrentUser(user);
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -220,6 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await _storageService.signInWithGoogle();
 
       if (user != null && mounted) {
+        // Set current user in storage service
+        _storageService.setCurrentUser(user);
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),

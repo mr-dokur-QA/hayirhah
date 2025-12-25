@@ -77,6 +77,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     final token = await _storageService.getAuthToken();
     if (token != null) {
       _apiService.setAuthToken(token);
+      print('Auth token loaded successfully');
+    } else {
+      print('No auth token found');
     }
   }
 
@@ -104,7 +107,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     final currentUser = _storageService.currentUser;
     final token = await _storageService.getAuthToken();
 
+    print('Auth check - Current user: ${currentUser?.username}, Token exists: ${token != null}');
+
     if (currentUser == null || token == null) {
+      print('Auth failed - User not logged in');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -112,6 +118,36 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             backgroundColor: Colors.red,
           ),
         );
+        // Navigate to login screen
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+      return;
+    }
+
+    // Set auth token for API calls
+    _apiService.setAuthToken(token);
+
+    // Test token validity by calling profile endpoint
+    try {
+      print('Testing token validity...');
+      final profile = await _apiService.getProfile();
+      if (profile == null) {
+        print('Token invalid - profile call failed');
+        throw Exception('Token expired');
+      }
+      print('Token is valid');
+    } catch (e) {
+      print('Token validation failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        // Clear invalid tokens
+        await _storageService.clearAuthTokens();
+        _apiService.clearAuthToken();
         // Navigate to login screen
         Navigator.pushReplacementNamed(context, '/login');
       }

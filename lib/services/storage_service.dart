@@ -65,6 +65,11 @@ class StorageService {
   User? _currentUser;
   User? get currentUser => _currentUser;
 
+  /// Set current user (used after login)
+  void setCurrentUser(User user) {
+    _currentUser = user;
+  }
+
   // Theme preference methods
   Future<bool?> getThemePreference() async {
     final prefs = await _sharedPrefs;
