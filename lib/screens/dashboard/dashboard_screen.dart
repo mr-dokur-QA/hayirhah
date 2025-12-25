@@ -132,18 +132,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               const SizedBox(height: 16),
 
-              // AI Report button
-              _buildMainFeatureButton(
-                context,
-                title: 'AI Namaz Raporu',
-                subtitle: 'Yapay zeka destekli kişisel namaz analiziniz',
-                icon: Icons.auto_awesome,
-                color: Colors.amber.shade700,
-                onTap: () => _navigateToAIReport(context),
-              ),
-
-              const SizedBox(height: 16),
-
               // Create Activity button
               _buildMainFeatureButton(
                 context,
@@ -213,6 +201,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
 
               const SizedBox(height: 12),
+
+              // AI Prayer Report button
+              _buildSecondaryButton(
+                context,
+                title: 'Namaz Raporu',
+                subtitle: 'AI destekli kişisel namaz analiziniz',
+                icon: Icons.auto_awesome,
+                color: Colors.amber.shade700,
+                onTap: () => _navigateToAIReport(context),
+              ),
 
               const SizedBox(height: 32),
             ],
