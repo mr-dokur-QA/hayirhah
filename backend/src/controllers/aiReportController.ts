@@ -218,7 +218,7 @@ ONEMLI KURALLAR:
 - Her zaman tesvik edici ve destekleyici ol
 - Kullanicinin cabasini takdir et
 - Sadece Turkce karakterler ve cumleler kullan
-- Bolum basliklarinda ve uygun yerlerde EMOJI kullan (🌟 ✨ 💪 🤲 📿 🕌 ❤️ 🙏 📖 gibi)
+- Sadece bolum basliklarinda emoji kullan, metin icinde emoji kullanma
 - Raporun sonunda MUTLAKA kullaniciya dua et
 - Raporun sonunda konuyla ilgili kisa bir hadis veya ayet meali ekle ve kaynagini belirt
 `;
@@ -239,29 +239,24 @@ GUNLUK VERILER:
 - Teheccud: ${data.teheccudCount > 0 ? 'Evet' : 'Henuz yok'}
 - Duha: ${data.duhaCount > 0 ? 'Evet' : 'Henuz yok'}
 
-RAPOR FORMATI (bu bolum basliklarini kullan):
+RAPOR FORMATI:
 
-🌟 SELAMLAMA
-- Sicak bir selamlama ile basla
-
-📊 GUNUN OZETI  
-- Gunun ibadet ozetini samimi bir dille anlat
+- "Merhaba kardesim!" diye baslayip gunun ozetini samimi bir dille anlat
 
 💪 GUCLU YONLERIN
-- Bugunku basarilarini ve guzel yonlerini vurgula
-- En az 1-2 madde halinde yaz
+- Bugunku basarilarini ve guzel yonlerini vurgula (1-2 madde)
 
 🌱 GELISTIRILECEK YONLER
-- Yargilama yapmadan, nazikce ve tesvik edici sekilde onerilerde bulun
-- Eger her sey mukemmelse, bunu da kutla
+- Nazikce ve tesvik edici sekilde onerilerde bulun
+- Eger her sey mukemmelse, bunu kutla
 
 🤲 DUA
-- Icten ve guzel bir dua ile kapatis (Allah kabul etsin, Rabbim kolaylastirsin gibi)
+- Icten bir dua ile kapatis
 
 📖 ILHAM
-- Konuyla ilgili kisa bir hadis veya ayet meali ve kaynagi
+- Kisa bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 150 kelime. Arkadas gibi sicak ol, emojileri kullan!
+NOT: Maksimum 150 kelime. Arkadas gibi sicak ol.
 `;
   } else if (type === 'weekly') {
     return `
@@ -286,31 +281,25 @@ NAFILE NAMAZLAR:
 - Tesbih Namazi: ${data.tespihCount} gun
 - Kaza: ${data.totalKaza} adet
 
-RAPOR FORMATI (bu bolum basliklarini kullan):
+RAPOR FORMATI:
 
-🌟 SELAMLAMA
-- Sicak ve samimi bir selamlama
-
-📊 HAFTANIN OZETI
-- Genel degerlendirme, samimi bir dille
+- "Merhaba kardesim!" diye baslayip haftanin kisa bir ozetini ver
 
 💪 GUCLU YONLERIN
-- Bu haftaki basarilari ve parlayan yonleri vurgula
-- En az 2-3 madde halinde yaz
-- Hangi vakitte cok basarili, nafile namazlar, tesbihat vs.
+- Bu haftaki basarilari ve parlayan yonleri vurgula (2-3 madde)
+- Hangi vakitte basarili, nafile namazlar, tesbihat vs.
 
 🌱 GELISTIRILECEK YONLER
-- Nazikce ve tesvik edici sekilde oneriler
-- Zorunluluk degil, davet seklinde yaz
-- Eger cok basariliysa, bunu kutla
+- Nazikce ve tesvik edici oneriler (davet seklinde)
+- Cok basariliysa bunu kutla
 
 🤲 DUA
-- Icten ve guzel bir dua ile kapatis
+- Icten bir dua ile kapatis
 
 📖 ILHAM
 - Ilham verici bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 200 kelime. Arkadas gibi samimi ol, emojileri kullan!
+NOT: Maksimum 180 kelime. Arkadas gibi samimi ol.
 `;
   } else {
     return `
@@ -335,34 +324,27 @@ NAFILE NAMAZLAR:
 - Tesbih Namazi: ${data.totalTespih || data.tespihCount} gun
 - Toplam Kaza: ${data.totalKaza} adet
 
-RAPOR FORMATI (bu bolum basliklarini kullan):
+RAPOR FORMATI:
 
-🌟 SELAMLAMA
-- Sicak ve samimi bir selamlama
+- "Merhaba kardesim!" diye baslayip ayin kisa bir ozetini ver
 
-📊 AYIN OZETI
-- Genel degerlendirme, samimi ve tesvik edici
-
-💪 GUCLU YONLERIN (Ayin yildizlari)
-- Bu ayki basarilari ve one cikan yonleri vurgula
-- En az 3-4 madde halinde yaz
-- Hangi vakitler guclu, nafile namazlar, tesbihat, kaza performansi vs.
+💪 GUCLU YONLERIN
+- Bu ayki basarilari ve one cikan yonleri vurgula (3-4 madde)
+- Hangi vakitler guclu, nafile namazlar, tesbihat, kaza performansi
 
 🌱 GELISTIRILECEK YONLER
-- Nazikce ve tesvik edici sekilde oneriler
-- Gelecek ay icin guzel hedefler onerebilirsin
-- Davet seklinde yaz, baski yapma
+- Nazikce ve tesvik edici oneriler (davet seklinde, baski yapma)
 
 📈 GELECEK AY ICIN HEDEFLER
 - 1-2 kucuk ve ulasildabilir hedef oner
 
 🤲 DUA
-- Icten ve guzel bir dua ile kapatis (Rabbim ibadetlerinizi makbul kilsin gibi)
+- Icten bir dua ile kapatis
 
 📖 ILHAM
 - Ilham verici bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 250 kelime. Arkadas gibi sicak ve samimi ol, emojileri kullan!
+NOT: Maksimum 220 kelime. Arkadas gibi sicak ve samimi ol.
 `;
   }
 }
