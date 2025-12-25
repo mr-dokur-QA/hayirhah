@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/prayer_tracking.dart';
 import 'storage_service.dart';
+import 'api_service.dart';
 
 class PrayerTrackingService extends ChangeNotifier {
   static final PrayerTrackingService _instance = PrayerTrackingService._internal();
@@ -10,6 +11,7 @@ class PrayerTrackingService extends ChangeNotifier {
   PrayerTrackingService._internal();
 
   final StorageService _storageService = StorageService();
+  final ApiService _apiService = ApiService();
   
   // In-memory cache
   final Map<String, DailyPrayerTracking> _dailyRecords = {};
@@ -86,26 +88,36 @@ class PrayerTrackingService extends ChangeNotifier {
   Future<void> togglePrayerCompletion(String prayerId, DateTime date) async {
     final currentUser = _storageService.currentUser;
     if (currentUser == null) return;
-    
+
     final dayKey = _getDayKey(currentUser.id, date);
     var dayRecord = _dailyRecords[dayKey] ?? _createDefaultDayRecord(currentUser.id, date);
-    
+
     final prayerIndex = dayRecord.prayers.indexWhere((p) => p.id == prayerId);
     if (prayerIndex == -1) return;
-    
+
     final prayer = dayRecord.prayers[prayerIndex];
     final updatedPrayer = prayer.copyWith(
       isCompleted: !prayer.isCompleted,
       completedAt: !prayer.isCompleted ? DateTime.now() : null,
     );
-    
+
     final updatedPrayers = List<PrayerRecord>.from(dayRecord.prayers);
     updatedPrayers[prayerIndex] = updatedPrayer;
-    
+
     final updatedDayRecord = dayRecord.copyWith(prayers: updatedPrayers);
     _dailyRecords[dayKey] = updatedDayRecord;
-    
+
     await _saveToStorage();
+
+    // Try to sync with API
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+      final apiData = updatedDayRecord.toApiFormat();
+      await _apiService.updateDailyPrayerRecord(dateStr, apiData);
+    } catch (e) {
+      print('Failed to sync prayer completion with API: $e');
+    }
+
     notifyListeners();
   }
 

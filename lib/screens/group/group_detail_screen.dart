@@ -173,6 +173,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     }
 
     try {
+      // Try API first, fallback to local storage
+      final connectivity = ConnectivityService.instance;
+
+      if (connectivity.isOnline) {
+        try {
+          final result = await _apiService.assignTask(_group!.id, task.id);
+          if (result != null) {
+            await _loadGroupData();
+            return;
+          }
+        } catch (apiError) {
+          print('API task assignment failed, using local storage: $apiError');
+        }
+      }
+
+      // Fallback to local storage
       final updatedTask = await _storageService.assignTask(task.id);
       if (updatedTask != null) {
         await _loadGroupData();
@@ -325,6 +341,28 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     if (_currentUser == null) return;
 
     try {
+      // Try API first, fallback to local storage
+      final connectivity = ConnectivityService.instance;
+
+      if (connectivity.isOnline) {
+        try {
+          final result = await _apiService.completeTask(_group!.id, task.id);
+          if (result != null) {
+            await _loadGroupData();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${_getTaskName(task)} tamamlandı! Allah kabul etsin.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            return;
+          }
+        } catch (apiError) {
+          print('API task completion failed, using local storage: $apiError');
+        }
+      }
+
+      // Fallback to local storage
       final updatedTask = await _storageService.completeTask(task.id);
       if (updatedTask != null) {
         await _loadGroupData();
@@ -945,6 +983,8 @@ Hayırlı olsun!
       sectionTitle = 'Görevler';
     }
 
+    print('Building tasks section for type: ${_group!.type}, tasks count: ${_tasks.length}');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -959,6 +999,8 @@ Hayırlı olsun!
           _buildHatimGrid()
         else if (_group!.type == 'cevsen')
           _buildCevsenGrid()
+        else if (_group!.type == 'tefriciye' || _group!.type == 'fetih' || _group!.type == 'yasin' || _group!.type == '1000_ihlas')
+          _buildNumberedTasksView()
         else
           _buildTasksList(),
       ],
@@ -1173,6 +1215,110 @@ Hayırlı olsun!
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNumberedTasksView() {
+    return Column(
+      children: [
+        // Kalan görev sayısını göster
+        Card(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.blue.shade900.withOpacity(0.3)
+              : Colors.blue.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.blue.shade200
+                      : Colors.blue.shade700,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Kalan ${_getTaskTypeName().toLowerCase()}: ${_getRemainingTaskCount()}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.blue.shade100
+                          : Colors.blue.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Görev al butonu
+        if (_getRemainingTaskCount() > 0)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.add_task, color: Colors.green),
+              title: Text('Yeni ${_getTaskTypeName()} Görevi Al'),
+              subtitle: Text('Kendinize ${_getTaskTypeName().toLowerCase()} görevi atayın'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => _showDynamicTaskAssignmentDialog(),
+            ),
+          ),
+
+        // Arapça metin okuma butonu (sadece desteklenen türler için)
+        if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih')
+          Card(
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF667EEA).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.menu_book,
+                  color: Color(0xFF667EEA),
+                ),
+              ),
+              title: Text('${_getTaskTypeName()} Oku'),
+              subtitle: Text('Arapça metnini okuyun'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => _navigateToArabicText(),
+            ),
+          ),
+        const SizedBox(height: 16),
+
+        // Mevcut görevler
+        if (_tasks.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Alınan Görevler (${_tasks.length})',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._tasks.map((task) {
+            return KeyedSubtree(
+              key: ValueKey(task.id),
+              child: Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text(_getTaskName(task)),
+                  subtitle: Text(_getTaskStatusText(task)),
+                  trailing: _getTaskTrailing(task),
+                  onTap: () => _handleTaskTap(task),
+                ),
+              ),
+            );
+          }).toList(),
+        ],
+      ],
     );
   }
 

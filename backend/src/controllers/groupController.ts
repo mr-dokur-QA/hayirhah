@@ -6,9 +6,9 @@ import crypto from 'crypto';
 // Group types
 const GROUP_TYPES = ['hatim', 'yasin', 'fetih', 'tefriciye', 'cevsen', 'custom_parca', 'custom_sayi', '1000_ihlas'] as const;
 
-// Task types: 'sectioned' = each item is a separate task (hatim, cevsen), 'numbered' = just a counter (tefriciye, 1000_ihlas)
-const SECTIONED_TYPES = ['hatim', 'yasin', 'fetih', 'cevsen', 'custom_parca'] as const;
-const NUMBERED_TYPES = ['tefriciye', '1000_ihlas', 'custom_sayi'] as const;
+// Task types: 'sectioned' = each item is a separate task (hatim, cevsen), 'numbered' = just a counter (tefriciye, fetih, 1000_ihlas)
+const SECTIONED_TYPES = ['hatim', 'yasin', 'cevsen', 'custom_parca'] as const;
+const NUMBERED_TYPES = ['tefriciye', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
 
 // Validation schemas
 const createGroupSchema = z.object({

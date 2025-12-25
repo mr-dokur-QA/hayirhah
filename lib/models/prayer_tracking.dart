@@ -180,6 +180,17 @@ class AdditionalPrayersTracking {
       'yatsı': 0,
     },
   );
+
+  // Convert to health data format for API
+  Map<String, dynamic> toHealthData() {
+    return {
+      'teheccud': teheccud,
+      'duha': duha,
+      'evvabin': evvabin,
+      'tespih': tespih,
+      // Kaza prayers are handled separately in the API format
+    };
+  }
 }
 
 class DailyPrayerTracking {
@@ -240,6 +251,36 @@ class DailyPrayerTracking {
       'prayers': prayers.map((p) => p.toMap()).toList(),
       'userId': userId,
       'additionalPrayers': additionalPrayers.toMap(),
+    };
+  }
+
+  // Convert to API format for backend
+  Map<String, dynamic> toApiFormat() {
+    // Group prayers by type for API format
+    final fardPrayers = <String, dynamic>{};
+    final sunnahPrayers = <String, bool>{};
+    final kazaPrayers = <String, int>{};
+
+    for (final prayer in prayers) {
+      if (prayer.type == PrayerType.fard) {
+        fardPrayers[prayer.prayerName.toLowerCase()] = {
+          'isCompleted': prayer.isCompleted,
+          'completedSunnet': prayer.completedSunnet,
+          'completedTesbihat': prayer.completedTesbihat,
+        };
+      } else if (prayer.type == PrayerType.sunnah) {
+        sunnahPrayers[prayer.prayerName.toLowerCase()] = prayer.isCompleted;
+      }
+    }
+
+    // Add kaza prayers
+    kazaPrayers.addAll(additionalPrayers.kazaPrayers);
+
+    return {
+      'fardPrayers': fardPrayers,
+      'sunnahPrayers': sunnahPrayers,
+      'kazaPrayers': kazaPrayers,
+      'healthData': additionalPrayers.toHealthData(),
     };
   }
 
