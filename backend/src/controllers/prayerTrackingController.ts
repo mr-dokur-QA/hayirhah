@@ -144,6 +144,7 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
     if (sunnahPrayers !== undefined) updateData.sunnahPrayers = sunnahPrayers;
     if (kazaPrayers !== undefined) updateData.kazaPrayers = kazaPrayers;
     if (healthData !== undefined) updateData.healthData = healthData;
+    updateData.userUsername = req.user.username;
 
     // Upsert prayer tracking record
     const updatedRecord = await prisma.prayerTracking.upsert({
@@ -156,6 +157,7 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
       update: updateData,
       create: {
         userId: req.user.userId,
+        userUsername: req.user.username,
         date: new Date(date),
         fardPrayers: fardPrayers || {},
         sunnahPrayers: sunnahPrayers || {},
@@ -241,9 +243,11 @@ export const updateFardPrayer = async (req: Request, res: Response): Promise<voi
       },
       update: {
         fardPrayers: currentFardPrayers,
+        userUsername: req.user.username,
       },
       create: {
         userId: req.user.userId,
+        userUsername: req.user.username,
         date: new Date(date),
         fardPrayers: currentFardPrayers,
         sunnahPrayers: {},
@@ -322,9 +326,11 @@ export const updateSunnahPrayer = async (req: Request, res: Response): Promise<v
       },
       update: {
         sunnahPrayers: currentSunnahPrayers,
+        userUsername: req.user.username,
       },
       create: {
         userId: req.user.userId,
+        userUsername: req.user.username,
         date: new Date(date),
         fardPrayers: {},
         sunnahPrayers: currentSunnahPrayers,
@@ -389,9 +395,11 @@ export const updateKazaPrayers = async (req: Request, res: Response): Promise<vo
       },
       update: {
         kazaPrayers,
+        userUsername: req.user.username,
       },
       create: {
         userId: req.user.userId,
+        userUsername: req.user.username,
         date: new Date(date),
         fardPrayers: {},
         sunnahPrayers: {},
@@ -470,9 +478,11 @@ export const updateHealthData = async (req: Request, res: Response): Promise<voi
       },
       update: {
         healthData: updatedHealthData,
+        userUsername: req.user.username,
       },
       create: {
         userId: req.user.userId,
+        userUsername: req.user.username,
         date: new Date(date),
         fardPrayers: {},
         sunnahPrayers: {},

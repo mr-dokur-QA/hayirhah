@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../group/create_group_screen.dart';
 import '../group/my_groups_screen.dart';
+import '../invite/join_group_screen.dart';
 import '../qibla/qibla_finder_screen.dart';
 import '../settings/settings_screen.dart';
 import '../prayer/prayer_times_screen.dart';
@@ -138,6 +139,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.volunteer_activism,
                 color: Colors.blue,
                 onTap: () => _navigateToCreateGroup(context),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Join Activity button
+              _buildMainFeatureButton(
+                context,
+                title: 'Etkinliğe Katıl',
+                subtitle: 'Davet koduyla mevcut bir etkinliğe katılın',
+                icon: Icons.group_add,
+                color: Colors.orange,
+                onTap: () => _navigateToJoinGroup(context),
               ),
 
               const SizedBox(height: 16),
@@ -346,6 +359,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (result == true) {
       // No need to call _loadUserGroups() as user groups are removed
     }
+  }
+
+  void _navigateToJoinGroup(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const JoinGroupScreen()),
+    );
   }
 
 

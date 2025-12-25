@@ -434,20 +434,47 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       filteredUpdateData.profilePhotoUrl = updateData.profilePhotoUrl;
     }
 
-    // Update user
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data: filteredUpdateData,
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        profilePhotoUrl: true,
-        isVerified: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // Update user
+      const user = await tx.user.update({
+        where: { id: req.user!.userId },
+        data: filteredUpdateData,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          profilePhotoUrl: true,
+          isVerified: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      // Keep denormalized username fields in sync (best-effort debug columns)
+      if (filteredUpdateData.username) {
+        const newUsername = filteredUpdateData.username;
+        await Promise.all([
+          tx.task.updateMany({
+            where: { assignedTo: user.id },
+            data: { assignedToUsername: newUsername },
+          }),
+          tx.groupMember.updateMany({
+            where: { userId: user.id },
+            data: { userUsername: newUsername },
+          }),
+          tx.numberedTaskAssignment.updateMany({
+            where: { userId: user.id },
+            data: { userUsername: newUsername },
+          }),
+          tx.prayerTracking.updateMany({
+            where: { userId: user.id },
+            data: { userUsername: newUsername },
+          }),
+        ]);
+      }
+
+      return user;
     });
 
     res.status(200).json({

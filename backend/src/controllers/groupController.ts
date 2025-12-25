@@ -153,6 +153,7 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
         data: {
           groupId: created.id,
           userId: req.user!.userId,
+          userUsername: req.user!.username,
           role: 'creator',
         },
       });
@@ -609,6 +610,7 @@ export const joinGroup = async (req: Request, res: Response): Promise<void> => {
       data: {
         groupId: group.id,
         userId: req.user.userId,
+        userUsername: req.user.username,
         role: 'member',
       },
       include: {

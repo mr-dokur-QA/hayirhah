@@ -297,10 +297,12 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
         },
         update: {
           assignedCount: { increment: amount },
+          userUsername: req.user.username,
         },
         create: {
           groupId,
           userId: req.user.userId,
+          userUsername: req.user.username,
           assignedCount: amount,
           completedCount: 0,
         },
@@ -369,6 +371,7 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
       where: { id: taskId },
       data: {
         assignedTo: req.user.userId,
+        assignedToUsername: req.user.username,
         status: 'assigned',
         assignedAt: new Date(),
       },

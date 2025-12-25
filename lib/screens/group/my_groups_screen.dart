@@ -5,6 +5,7 @@ import '../../models/group.dart';
 import '../../core/network/connectivity_service.dart';
 import 'group_detail_screen.dart';
 import 'create_group_screen.dart';
+import '../invite/join_group_screen.dart';
 
 class MyGroupsScreen extends StatefulWidget {
   const MyGroupsScreen({Key? key}) : super(key: key);
@@ -148,6 +149,19 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 1,
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Etkinliğe Katıl',
+            icon: const Icon(Icons.group_add),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const JoinGroupScreen()),
+              );
+              _loadUserGroups();
+            },
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadUserGroups,
@@ -227,6 +241,26 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const JoinGroupScreen()),
+                );
+                _loadUserGroups();
+              },
+              icon: const Icon(Icons.group_add),
+              label: const Text('Etkinliğe Katıl'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                side: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
               ),
             ),
           ],

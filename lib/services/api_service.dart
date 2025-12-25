@@ -11,6 +11,7 @@ class ApiService {
   static const String _authRegister = '/auth/register';
   static const String _authLogin = '/auth/login';
   static const String _authProfile = '/auth/profile';
+  static const String _authLogout = '/auth/logout';
   static const String _groups = '/groups';
   static const String _groupsJoin = '/groups/join';
   static const String _prayerTracking = '/prayer-tracking';
@@ -100,6 +101,20 @@ class ApiService {
     } on DioException catch (e) {
       _handleError('Get profile', e);
       return null;
+    }
+  }
+
+  /// Logout (invalidate refresh token on backend)
+  Future<bool> logout(String refreshToken) async {
+    try {
+      final response = await _client.post(
+        _authLogout,
+        data: {'refreshToken': refreshToken},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      _handleError('Logout', e);
+      return false;
     }
   }
 
