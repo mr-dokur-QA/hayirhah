@@ -21,6 +21,34 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isRegisterMode = false;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedToken();
+  }
+
+  Future<void> _loadSavedToken() async {
+    final token = await _storageService.getAuthToken();
+    if (token != null && mounted) {
+      _apiService.setAuthToken(token);
+      // Check if token is still valid by trying to get profile
+      try {
+        final profile = await _apiService.getProfile();
+        if (profile != null && mounted) {
+          // Token is valid, navigate to dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }
+      } catch (e) {
+        // Token invalid, clear it
+        await _storageService.clearAuthTokens();
+        _apiService.clearAuthToken();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -42,7 +70,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result != null && mounted) {
-        // Login successful
+        // Login successful - save tokens
+        final tokens = result['tokens'] ?? result['data']?['tokens'];
+        if (tokens != null) {
+          final accessToken = tokens['accessToken'];
+          final refreshToken = tokens['refreshToken'];
+          if (accessToken != null) {
+            await _storageService.saveAuthToken(accessToken);
+            if (refreshToken != null) {
+              await _storageService.saveRefreshToken(refreshToken);
+            }
+            final userData = result['user'] ?? result['data']?['user'];
+            if (userData != null && userData['id'] != null) {
+              await _storageService.saveCurrentUserId(userData['id']);
+            }
+          }
+        }
+        
         final userData = result['user'] ?? result['data']?['user'];
         final username = userData?['username'] ?? 'Kullanıcı';
         Navigator.pushReplacement(
@@ -143,6 +187,23 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result != null && mounted) {
+        // Register successful - save tokens
+        final tokens = result['tokens'] ?? result['data']?['tokens'];
+        if (tokens != null) {
+          final accessToken = tokens['accessToken'];
+          final refreshToken = tokens['refreshToken'];
+          if (accessToken != null) {
+            await _storageService.saveAuthToken(accessToken);
+            if (refreshToken != null) {
+              await _storageService.saveRefreshToken(refreshToken);
+            }
+            final userData = result['user'] ?? result['data']?['user'];
+            if (userData != null && userData['id'] != null) {
+              await _storageService.saveCurrentUserId(userData['id']);
+            }
+          }
+        }
+        
         final userData = result['user'] ?? result['data']?['user'];
         final username = userData?['username'] ?? 'Kullanıcı';
         Navigator.pushReplacement(

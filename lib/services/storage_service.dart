@@ -47,6 +47,9 @@ class StorageService {
   static const String _locationKey = 'location';
   static const String _locationCacheKey = 'location_cache_timestamp';
   static const String _manualCityKey = 'manual_city';
+  static const String _authTokenKey = 'auth_token';
+  static const String _refreshTokenKey = 'refresh_token';
+  static const String _currentUserIdKey = 'current_user_id';
 
   // Cache duration constants
   static const Duration prayerTimesCacheDuration = Duration(hours: 24);
@@ -605,6 +608,44 @@ class StorageService {
 
     final updatedGroup = group.copyWith(currentProgress: completedCount);
     _groups[groupId] = updatedGroup;
+  }
+
+  // Auth token methods
+  Future<void> saveAuthToken(String token) async {
+    final prefs = await _sharedPrefs;
+    await prefs.setString(_authTokenKey, token);
+  }
+
+  Future<String?> getAuthToken() async {
+    final prefs = await _sharedPrefs;
+    return prefs.getString(_authTokenKey);
+  }
+
+  Future<void> saveRefreshToken(String token) async {
+    final prefs = await _sharedPrefs;
+    await prefs.setString(_refreshTokenKey, token);
+  }
+
+  Future<String?> getRefreshToken() async {
+    final prefs = await _sharedPrefs;
+    return prefs.getString(_refreshTokenKey);
+  }
+
+  Future<void> saveCurrentUserId(String userId) async {
+    final prefs = await _sharedPrefs;
+    await prefs.setString(_currentUserIdKey, userId);
+  }
+
+  Future<String?> getCurrentUserId() async {
+    final prefs = await _sharedPrefs;
+    return prefs.getString(_currentUserIdKey);
+  }
+
+  Future<void> clearAuthTokens() async {
+    final prefs = await _sharedPrefs;
+    await prefs.remove(_authTokenKey);
+    await prefs.remove(_refreshTokenKey);
+    await prefs.remove(_currentUserIdKey);
   }
 
   // Türkçe tarih formatı için yardımcı fonksiyon

@@ -68,6 +68,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadAuthToken();
+  }
+
+  Future<void> _loadAuthToken() async {
+    final token = await _storageService.getAuthToken();
+    if (token != null) {
+      _apiService.setAuthToken(token);
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
