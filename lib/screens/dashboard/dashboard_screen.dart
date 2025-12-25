@@ -206,7 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildSecondaryButton(
                 context,
                 title: 'Namaz Raporu',
-                subtitle: 'AI destekli kişisel namaz analiziniz',
+                subtitle: 'Hesaba çekilmeden kendimizi hesaba çekelim',
                 icon: Icons.auto_awesome,
                 color: Colors.amber.shade700,
                 onTap: () => _navigateToAIReport(context),

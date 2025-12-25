@@ -161,7 +161,7 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'AI destekli kişiselleştirilmiş namaz analizi',
+                  'Hesaba çekilmeden kendimizi hesaba çekelim',
                   style: TextStyle(
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
