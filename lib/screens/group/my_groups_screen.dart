@@ -257,6 +257,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     final progress = group.targetCount > 0 
         ? (group.currentProgress / group.targetCount) * 100 
         : 0.0;
+    final isLocal = group.inviteCode.length == 6 || int.tryParse(group.id) != null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -330,6 +331,24 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                                 ),
                               ),
                             if (isCreator) const SizedBox(width: 8),
+                            if (isLocal) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Yerel',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
                             Text(
                               '${group.participantIds.length} katılımcı',
                               style: TextStyle(

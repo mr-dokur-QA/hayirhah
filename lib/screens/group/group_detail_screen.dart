@@ -30,6 +30,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   static const int _tasksPerPage = 20;
   int _visibleTaskCount = 20;
 
+  bool _isLikelyLocalGroup(Group group) {
+    // Local storage uses 6-char invite codes; backend uses 10-char hex.
+    if (group.inviteCode.length == 6) return true;
+    // Local ids are numeric-ish timestamps; backend ids are cuid strings.
+    if (int.tryParse(group.id) != null) return true;
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -117,11 +125,27 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               amount: (taskData['amount'] as num?)?.toInt(),
             )).toList();
 
-            final participants = group.participantIds
-                .map((id) => _storageService.getUserByIdSync(id))
-                .where((user) => user != null)
-                .cast<User>()
-                .toList();
+            // Build participants from API members (not local cache)
+            final participants = members.map<User?>((m) {
+              if (m is Map) {
+                final user = m['user'];
+                if (user is Map && user['id'] != null) {
+                  return User(
+                    id: user['id'].toString(),
+                    username: (user['username'] ?? '').toString().isNotEmpty
+                        ? user['username'].toString()
+                        : 'Kullanıcı',
+                    email: (user['email'] ?? '').toString(),
+                    profilePhotoUrl: user['profilePhotoUrl']?.toString(),
+                    createdAt: DateTime.now(),
+                  );
+                }
+              }
+              return null;
+            }).whereType<User>().toList();
+
+            // Populate local user cache so task cards can resolve assignees by id
+            _storageService.upsertUsers(participants);
 
             setState(() {
               _group = group;
@@ -782,6 +806,32 @@ Hayırlı olsun!
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _isLikelyLocalGroup(_group!)
+                        ? Colors.orange.withOpacity(0.15)
+                        : Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: _isLikelyLocalGroup(_group!) ? Colors.orange : Colors.green,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    _isLikelyLocalGroup(_group!) ? 'Yerel' : 'Sunucu',
+                    style: TextStyle(
+                      color: _isLikelyLocalGroup(_group!) ? Colors.orange[800] : Colors.green[800],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
             if (_group!.description.isNotEmpty) ...[
               const SizedBox(height: 8),

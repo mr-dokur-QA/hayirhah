@@ -70,6 +70,18 @@ class StorageService {
     _currentUser = user;
   }
 
+  /// Upsert a user into the in-memory cache (used when we fetch members from API)
+  void upsertUser(User user) {
+    _users[user.id] = user;
+  }
+
+  /// Upsert multiple users into the in-memory cache
+  void upsertUsers(Iterable<User> users) {
+    for (final u in users) {
+      _users[u.id] = u;
+    }
+  }
+
   // Theme preference methods
   Future<bool?> getThemePreference() async {
     final prefs = await _sharedPrefs;

@@ -62,23 +62,28 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         }
       }
 
-      // Fallback to local storage (offline / API fail)
-      final group = await _storageService.joinGroupByInviteCode(inviteCode);
+      // Fallback to local storage (offline / API fail) ONLY for local-style codes
+      if (inviteCode.length == 6) {
+        final group = await _storageService.joinGroupByInviteCode(inviteCode);
 
-      if (group != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => GroupDetailScreen(groupId: group.id),
-          ),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${group.title} etkinliğine katıldınız!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (group != null && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GroupDetailScreen(groupId: group.id),
+            ),
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${group.title} etkinliğine katıldınız! (Yerel)'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
       }
+
+      throw Exception('Sunucuya bağlanılamadı veya davet kodu geçersiz');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
