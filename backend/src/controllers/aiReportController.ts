@@ -207,106 +207,109 @@ function analyzeData(records: any[], type: string): Record<string, any> {
 }
 
 function buildPrompt(data: Record<string, any>, type: string, date: Date): string {
-  const turkishDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-  const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const turkishDays = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
+  const turkishMonths = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
 
   const commonRules = `
-ÖNEMLİ KURALLAR (KESİNLİKLE UYULMALI):
-- ASLA yargılayıcı, eleştiren veya suçlayıcı bir dil KULLANMA
-- "Kaçırdın", "yapamadın", "eksik kaldın", "ihmal ettin" gibi ifadeler YASAK
-- Kullanıcıyı kötü hissettiren, utandıran veya baskı yapan cümleler YASAK
-- Sadece NESNEL istatistiksel verileri sun
-- Her zaman TEŞVİK EDİCİ ve DESTEKLEYICI ol
-- Kullanıcının çabasını takdir et, yolculuğuna saygı göster
-- "Kılınmayan" yerine "henüz kılınmayan" veya sadece rakamları kullan
-- Negatif yerine pozitif çerçeveleme yap (örn: "3 namaz kılınmamış" yerine "2 namaz kılındı")
+ONEMLI KURALLAR:
+- Samimi, sicak ve arkadas gibi bir dil kullan
+- ASLA yargilayici, elestiren veya suclayici olma
+- Kullaniciyi kotu hissettiren ifadeler YASAK
+- Her zaman tesvik edici ve destekleyici ol
+- Kullanicinin cabasini takdir et
+- Sadece Turkce karakterler ve cumleler kullan
+- Raporun sonunda MUTLAKA kullaniciya dua et (ornek: Allah ibadetlerinizi kabul etsin, Rabbim kolaylastirsim gibi)
+- Raporun sonunda konuyla ilgili kisa bir hadis veya ayet meali ekle ve kaynagini belirt
 `;
 
   if (type === 'daily') {
     return `
-Sen yardımsever bir ibadet takip asistanısın. Kullanıcının günlük namaz istatistiklerini Türkçe olarak özetle.
+Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin gunluk namaz verilerini sicak bir dille ozetle.
 
 ${commonRules}
 
-📅 TARİH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
+TARIH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
 
-📊 GÜNLÜK İSTATİSTİKLER:
-- Farz Namaz: ${data.completedFard}/5 (%${data.fardCompletionRate})
-- Sünnet: ${data.completedSunnet}/5 (%${data.sunnetRate})
-- Tesbihat: ${data.completedTesbihat}/5 (%${data.tesbihatRate})
-- Kaza Namazı: ${data.totalKaza} adet
-- Teheccüd: ${data.teheccudCount > 0 ? 'Evet' : '-'}
-- Duha: ${data.duhaCount > 0 ? 'Evet' : '-'}
+GUNLUK VERILER:
+- Farz Namaz: ${data.completedFard}/5
+- Sunnet: ${data.completedSunnet}/5
+- Tesbihat: ${data.completedTesbihat}/5
+- Kaza Namazi: ${data.totalKaza} adet
+- Teheccud: ${data.teheccudCount > 0 ? 'Evet' : 'Henuz yok'}
+- Duha: ${data.duhaCount > 0 ? 'Evet' : 'Henuz yok'}
 
 RAPOR FORMATI:
-1. Kısa ve sıcak bir selamlama
-2. 📊 Günün özet istatistikleri (sayılar)
-3. ✨ Bugün için bir teşvik cümlesi
-4. 💪 Yarın için pozitif bir motivasyon
+1. Sicak bir selamlama (Selamun aleykum veya Hayirli gunler gibi)
+2. Gunun ozeti - samimi ve tesvik edici bir dille anlat
+3. Basarilarini kutla, cabalarini takdir et
+4. Yarin icin guzel bir motivasyon cumlesi
+5. Icten bir dua ile kapatis (Allah kabul etsin, Rabbim kolaylastirsin gibi)
+6. Konuyla ilgili kisa bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 100 kelime. Emoji kullan. Sıcak ve destekleyici ol. YARGILAMA!
+NOT: Maksimum 120 kelime. Arkadas gibi sicak ol. Dua ve hadis/ayet eklemeyi unutma!
 `;
   } else if (type === 'weekly') {
     return `
-Sen yardımsever bir ibadet takip asistanısın. Kullanıcının haftalık namaz istatistiklerini Türkçe olarak analiz et.
+Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin haftalik namaz verilerini sicak bir dille analiz et.
 
 ${commonRules}
 
-📅 HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftası
+HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftasi
 
-📊 HAFTALIK İSTATİSTİKLER:
-- Kayıtlı Gün: ${data.totalDays}
-- Farz Namaz Toplamı: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
-- En Düzenli Vakit: ${data.leastMissedPrayer}
-- Sünnet Oranı: %${data.sunnetRate}
-- Tesbihat Oranı: %${data.tesbihatRate}
+HAFTALIK VERILER:
+- Kayitli Gun: ${data.totalDays}
+- Farz Namaz: ${data.completedFard}/${data.totalFard}
+- En Duzenli Vakit: ${data.leastMissedPrayer}
+- Sunnet Orani: %${data.sunnetRate}
+- Tesbihat Orani: %${data.tesbihatRate}
 
-NAFİLE NAMAZLAR:
-- Teheccüd: ${data.teheccudCount} gün
-- Duha: ${data.duhaCount} gün
-- Evvabin: ${data.evvabinCount} gün
-- Tesbih Namazı: ${data.tespihCount} gün
+NAFILE NAMAZLAR:
+- Teheccud: ${data.teheccudCount} gun
+- Duha: ${data.duhaCount} gun
+- Evvabin: ${data.evvabinCount} gun
+- Tesbih Namazi: ${data.tespihCount} gun
 - Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
-1. Sıcak bir selamlama
-2. 📊 Haftalık istatistik özeti (sadece rakamlar, yorum yok)
-3. ⭐ En güçlü yönler (2 madde - pozitif çerçeveleme)
-4. 🎯 Önümüzdeki hafta için nazik öneriler (opsiyonel hedefler, zorunluluk değil)
-5. 💚 Destekleyici kapanış
+1. Sicak bir selamlama
+2. Haftanin genel ozeti - samimi bir dille
+3. Guclu yonlerini ve basarilarini vurgula (en az 2 madde)
+4. Gelecek hafta icin nazik oneriler (zorunluluk degil, davet seklinde)
+5. Icten bir dua ile kapatis (Allah ibadetlerinizi kabul etsin gibi)
+6. Ilham verici bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 150 kelime. Pozitif ol. ASLA eleştirme veya yargılama!
+NOT: Maksimum 180 kelime. Arkadas gibi samimi ol. Dua ve hadis/ayet eklemeyi unutma!
 `;
   } else {
     return `
-Sen yardımsever bir ibadet takip asistanısın. Kullanıcının aylık namaz istatistiklerini Türkçe olarak özetle.
+Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin aylik namaz verilerini sicak bir dille ozetle.
 
 ${commonRules}
 
-📅 AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
+AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
 
-📊 AYLIK İSTATİSTİKLER:
-- Kayıtlı Gün: ${data.totalDays}
-- Farz Namaz Toplamı: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
-- Sünnet Oranı: %${data.sunnetRate}
-- Tesbihat Oranı: %${data.tesbihatRate}
+AYLIK VERILER:
+- Kayitli Gun: ${data.totalDays}
+- Farz Namaz: ${data.completedFard}/${data.totalFard}
+- Sunnet Orani: %${data.sunnetRate}
+- Tesbihat Orani: %${data.tesbihatRate}
 
-NAFİLE NAMAZLAR:
-- Teheccüd: ${data.totalTeheccud || data.teheccudCount} gün
-- Duha: ${data.totalDuha || data.duhaCount} gün
-- Evvabin: ${data.totalEvvabin || data.evvabinCount} gün
-- Tesbih Namazı: ${data.totalTespih || data.tespihCount} gün
+NAFILE NAMAZLAR:
+- Teheccud: ${data.totalTeheccud || data.teheccudCount} gun
+- Duha: ${data.totalDuha || data.duhaCount} gun
+- Evvabin: ${data.totalEvvabin || data.evvabinCount} gun
+- Tesbih Namazi: ${data.totalTespih || data.tespihCount} gun
 - Toplam Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
-1. Sıcak bir selamlama ve ay özeti
-2. 📊 Aylık istatistik tablosu (sadece sayılar)
-3. 🌟 Ayın öne çıkan başarıları (3 madde - kutlama tonu)
-4. 📈 İstatistiksel gözlemler (nötr, yargısız)
-5. 🎯 Gelecek ay için nazik öneriler (isteğe bağlı hedefler)
-6. 💚 İlham verici ve destekleyici kapanış
+1. Sicak bir selamlama
+2. Ayin genel degerlendirmesi - samimi ve tesvik edici
+3. Ayin one cikan basarilari (kutlama tonu, en az 3 madde)
+4. Gelecek ay icin guzel oneriler (davet seklinde, baski degil)
+5. Icten ve guzel bir dua ile kapatis (Rabbim ibadetlerinizi makbul kilsin gibi)
+6. Ilham verici bir hadis veya ayet meali ve kaynagi
 
-NOT: Maksimum 200 kelime. Her cümle pozitif olmalı. ASLA eleştirme, yargılama veya baskı yapma!
+NOT: Maksimum 220 kelime. Arkadas gibi sicak ve samimi ol. Dua ve hadis/ayet eklemeyi unutma!
 `;
   }
 }
