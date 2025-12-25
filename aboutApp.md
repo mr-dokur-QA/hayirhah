@@ -32,7 +32,8 @@
 ### 4. İbadet Türleri
 
 #### Hazır Şablonlar:
-- **Hatim:** Kur'an-ı Kerim'i 30 cüzde tamamlama (30 görev)
+- **Hatim:** Kur'an-ı Kerim'i 30 cüzde tamamlama (30 görev, grid görünümü)
+- **Cevşen-ül Kebir:** 100 bab'dan oluşan dua (20 görev x 5 bab, grid görünümü)
 - **Yasin Suresi:** 41 defa Yasin Suresi okuma (41 görev)
 - **Fetih Suresi:** 19 defa Fetih Suresi okuma (19 görev)
 - **Salât-ı Tefriciye:** 4444 defa Salât-ı Tefriciye okuma (4444 görev)
@@ -74,10 +75,17 @@
 - **Günlük Namaz Vakitleri:** 5 vakit namaz saatleri
 - **Türkçe Tarih Formatları:** Tam yerelleştirme
 - **Konum Tabanlı:** GPS ile otomatik konum belirleme
+- **Manuel Şehir Seçimi:** 81 il desteği ile GPS kullanmadan konum belirleme
+- **Konum Gizliliği:** Kullanıcılar GPS paylaşmak istemezse manuel şehir seçebilir
 - **Ezanlar:** Farklı ezan sesleri seçenekleri
+- **24 Saat Cache:** Namaz vakitleri günlük olarak önbelleğe alınır
 
-
-- **Basit Arayüz:** Kolay kullanım
+### 9. Ayarlar & Konum Yönetimi ⚙️
+- **Tema Yönetimi:** Açık/Koyu tema seçenekleri
+- **Konum Ayarları:** GPS veya Manuel şehir seçimi
+- **81 İl Desteği:** Tüm Türkiye illeri koordinatlarıyla birlikte
+- **Arama Özelliği:** Şehir listesinde hızlı arama
+- **Ezan Ses Seçimi:** Farklı ezan sesleri arasında seçim
 
 ### 10. Sosyal Özellikler
 - **Davet Sistemi:** 6 haneli davet kodları
@@ -108,6 +116,22 @@
 - **geocoding:** ^3.0.0 (Konum-adres dönüşümü)
 - **intl:** Türkçe tarih formatları
 - **shared_preferences:** Veri depolama
+- **dio:** ^5.9.0 (HTTP client, retry logic)
+- **connectivity_plus:** ^5.0.2 (Network durumu izleme)
+
+### Performance Optimizasyonları 🚀
+- **SharedPreferences Instance Caching:** Singleton pattern ile tekrar tekrar başlatma önlendi
+- **Namaz Vakitleri 24 Saat Cache:** API çağrıları günlük olarak önbelleğe alınır
+- **Konum Caching (15 dk TTL):** GPS sorguları azaltıldı
+- **const Constructors:** Widget rebuild optimizasyonu
+- **RepaintBoundary:** Kıble pusulası için render optimizasyonu
+- **Dio HTTP Client:** Retry logic, exponential backoff, timeout handling
+- **Connectivity Service:** Network durumu izleme ve offline fallback
+- **LocationAccuracy.low:** Hızlı ilk konum tespiti
+- **ListView.builder + cacheExtent:** Uzun listeler için scroll optimizasyonu
+- **ValueKey ile Diffing:** Verimli widget rebuild
+- **AutomaticKeepAliveClientMixin:** Tab içerikleri için state koruma
+- **Pagination:** 30+ görev için sayfalama desteği
 
 ### Veri Yapısı
 - **User Model:** Kullanıcı bilgileri
@@ -166,11 +190,16 @@ lib/
 │   │   └── settings_screen.dart # Ayarlar (YENİ)
 │   └── text/
 │       └── arabic_text_viewer_screen.dart # Metin görüntüleme
+├── core/
+│   └── network/
+│       ├── dio_client.dart     # Dio HTTP client, retry logic
+│       └── connectivity_service.dart # Network durumu izleme
 └── services/
     ├── storage_service.dart     # Veri depolama servisi
     ├── prayer_tracking_service.dart # İbadet takip servisi
     ├── prayer_times_service.dart # Namaz vakitleri servisi
-    ├── misafir_service.dart    # Misafir servisi
+    ├── location_service.dart   # Konum servisi (81 il, GPS)
+    ├── api_service.dart        # Dio ile API çağrıları
     ├── notification_service.dart # Bildirim servisi
     └── theme_service.dart      # Tema servisi
 ```
@@ -197,24 +226,29 @@ lib/
 
 ## Geliştirme Notları
 
+### Tamamlanan İyileştirmeler: ✅
+1. **Offline Mod:** Connectivity service ile internet bağlantısı izleme ve offline fallback
+2. **Performance Optimizasyonu:** Dio client, caching, retry logic
+3. **Hata Yönetimi:** Exponential backoff, timeout handling
+4. **Backend API'ler:** PostgreSQL + Prisma ORM ile tam API desteği (local development)
+
 ### Geliştirilmesi Gereken Özellikler:
-1. **Veritabanı Entegrasyonu:** Firebase/Supabase entegrasyonu
-2. **Kullanıcı Kimlik Doğrulama:** Güvenli giriş sistemi
-3. **Bildirim Sistemi:** Push notifications
-4. **Offline Mod:** İnternet bağlantısı olmadan çalışma
-5. **Ses Desteği:** Arapça metinler için ses dosyaları
-6. **Gelişmiş İstatistikler:** Grafikli analiz sayfaları
-7. **Tesbih Sayacı:** Dijital tesbih özelliği
-8. **Dua Koleksiyonu:** Günlük dualar ve zikirler
-9. **Hatırlatıcılar:** Namaz ve ibadet hatırlatmaları
-10. **Sosyal Özellikler:** Arkadaş sistemi ve paylaşımlar
+1. **Production Deployment:** Backend'in cloud'a deploy edilmesi
+2. **Bildirim Sistemi:** Firebase Cloud Messaging ile push notifications
+3. **Ses Desteği:** Arapça metinler için ses dosyaları
+4. **Gelişmiş İstatistikler:** Grafikli analiz sayfaları
+5. **Tesbih Sayacı:** Dijital tesbih özelliği
+6. **Dua Koleksiyonu:** Günlük dualar ve zikirler
+7. **Hatırlatıcılar:** Namaz ve ibadet hatırlatmaları
+8. **Sosyal Özellikler:** Arkadaş sistemi ve paylaşımlar
+9. **Google OAuth:** Google ile giriş entegrasyonu
+10. **Email Doğrulama:** Hesap doğrulama sistemi
 
 ### Mevcut Sınırlamalar:
-- Veriler yerel olarak saklanıyor (SharedPreferences)
-- Basit kimlik doğrulama sistemi
-- Sınırlı hata yönetimi
+- Backend henüz production'da değil (localhost üzerinde çalışıyor)
+- Google OAuth entegrasyonu beklemede
+- Email doğrulama sistemi kurulmadı
 - Kıble bulucu gerçek cihazda test edilmeli
-- Namaz vakitleri hesaplaması geliştirilmeli
 
 ## Kullanım Akışı
 
@@ -359,6 +393,16 @@ erDiagram
   - **Ayarlar Sayfası:** Uygulama ayarları ve tema yönetimi
   - **Uygulama Adı Değişikliği:** "Dua Kardeşliği" → "Hayırhah"
   - **SharedPreferences:** Kalıcı veri depolama sistemi
+- **v1.3.0:** 
+  - **Performance Optimizasyonları:** Dio client, connectivity service, smart caching
+  - **Manuel Şehir Seçimi:** 81 il desteği ile GPS kullanmadan konum belirleme
+  - **Cevşen-ül Kebir Etkinliği:** 100 bab grid görünümü (Hatim tarzı)
+  - **LocationService:** Merkezi konum yönetimi servisi
+  - **Hızlı Konum Tespiti:** LocationAccuracy.low ile başlangıç
+  - **Liste/Grid Optimizasyonu:** ValueKey, cacheExtent, pagination
+  - **Tab State Koruma:** AutomaticKeepAliveClientMixin
+  - **UI İyileştirmeleri:** Renk kontrastı düzeltmeleri
+  - **Metin Düzeltmeleri:** "İbadet Takip" → "Namaz Takip", "Tespih" → "Tesbih Namazı"
 - **Sonraki Sürümler:** Bu dosya geliştirme sürecinde güncellenecek
 
 ---
