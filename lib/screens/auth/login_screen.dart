@@ -282,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                   label: Text(
                     _isGoogleLoading ? 'Giriş yapılıyor...' : 'Google ile Giriş Yap',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.black87,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,

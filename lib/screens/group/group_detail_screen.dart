@@ -851,7 +851,6 @@ Hayırlı olsun!
         crossAxisCount: 6,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 1,
       ),
       itemCount: _tasks.length,
       itemBuilder: (context, index) {

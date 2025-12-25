@@ -70,7 +70,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
           children: [
             const Text(
               'İbadet Takip',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
               DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate),
@@ -657,7 +657,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
             LinearProgressIndicator(
               value: stats.weeklyFardCompletionRate,
               backgroundColor: Colors.grey.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
             ),
             const SizedBox(height: 8),
             Text(

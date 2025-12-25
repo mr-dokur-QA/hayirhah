@@ -44,8 +44,8 @@
 
 | ID | Task | Status | Impact |
 |----|------|--------|--------|
-| 4.1 | Add `const` constructors to all stateless widgets | ⬜ TODO | Medium |
-| 4.2 | Add `const` to widget constructors and literals | ⬜ TODO | Medium |
+| 4.1 | Add `const` constructors to all stateless widgets | ✅ DONE | Medium |
+| 4.2 | Add `const` to widget constructors and literals | ✅ DONE | Medium |
 | 4.3 | Use `RepaintBoundary` for compass/animation widgets | ⬜ TODO | Medium |
 | 4.4 | Extract frequently rebuilt widgets to separate classes | ⬜ TODO | Medium |
 
@@ -186,10 +186,10 @@ These can be done quickly with high impact:
 | Priority | Total | Done | In Progress | Remaining |
 |----------|-------|------|-------------|-----------|
 | 🔴 High | 12 | 3 | 0 | 9 |
-| 🟠 Medium | 16 | 2 | 0 | 14 |
+| 🟠 Medium | 16 | 4 | 0 | 12 |
 | 🟡 Low | 9 | 0 | 0 | 9 |
 | 🔵 Backend | 8 | 0 | 0 | 8 |
-| **Total** | **45** | **5** | **0** | **40** |
+| **Total** | **45** | **7** | **0** | **38** |
 
 ---
 
@@ -225,5 +225,5 @@ These can be done quickly with high impact:
 
 ---
 
-*Last Updated: December 24, 2025 - SharedPreferences & Prayer Cache implemented*
+*Last Updated: December 24, 2025 - SharedPreferences, Prayer Cache & const constructors implemented*
 

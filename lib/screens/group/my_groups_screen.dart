@@ -89,7 +89,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
       appBar: AppBar(
         title: const Text(
           'Etkinliklerim',
-          style: TextStyle(
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),

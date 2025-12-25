@@ -389,9 +389,9 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.location_on,
-                    color: const Color(0xFF00D4AA),
+                    color: Color(0xFF00D4AA),
                     size: 18,
                   ),
                   const SizedBox(width: 8),
