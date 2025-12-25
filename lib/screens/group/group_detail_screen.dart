@@ -25,7 +25,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   List<User> _participants = [];
   bool _isLoading = true;
   User? _currentUser;
-
+  
   // PERFORMANCE: Pagination state for task lists with 30+ items
   static const int _tasksPerPage = 20;
   int _visibleTaskCount = 20;

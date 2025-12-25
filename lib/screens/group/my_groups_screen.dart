@@ -39,7 +39,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
 
       // PERFORMANCE: Skip API call if offline - use local storage directly
       final connectivity = ConnectivityService.instance;
-
+      
       if (connectivity.isOnline) {
         // Try backend API first (with short timeout due to Dio config)
         final apiGroups = await _apiService.getUserGroups();
@@ -74,7 +74,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         _groups = groups;
         _isLoading = false;
       });
-      } catch (e) {
+    } catch (e) {
         print('API call failed for user groups: $e');
 
         // Check for auth errors
@@ -94,24 +94,24 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
           }
         }
 
-        // Fallback to local storage on error
-        try {
-          final groups = await _storageService.getUserGroups();
-          setState(() {
-            _groups = groups;
-            _isLoading = false;
-          });
-        } catch (localError) {
-          setState(() {
-            _isLoading = false;
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Etkinlikler yüklenirken hata: $e')),
-            );
-          }
+      // Fallback to local storage on error
+      try {
+        final groups = await _storageService.getUserGroups();
+        setState(() {
+          _groups = groups;
+          _isLoading = false;
+        });
+      } catch (localError) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Etkinlikler yüklenirken hata: $e')),
+          );
         }
       }
+    }
   }
 
   @override

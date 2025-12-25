@@ -100,7 +100,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       );
       return;
     }
-
+    
     if (!_formKey.currentState!.validate()) return;
 
     // Check if user is logged in

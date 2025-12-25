@@ -88,25 +88,25 @@ class PrayerTrackingService extends ChangeNotifier {
   Future<void> togglePrayerCompletion(String prayerId, DateTime date) async {
     final currentUser = _storageService.currentUser;
     if (currentUser == null) return;
-
+    
     final dayKey = _getDayKey(currentUser.id, date);
     var dayRecord = _dailyRecords[dayKey] ?? _createDefaultDayRecord(currentUser.id, date);
-
+    
     final prayerIndex = dayRecord.prayers.indexWhere((p) => p.id == prayerId);
     if (prayerIndex == -1) return;
-
+    
     final prayer = dayRecord.prayers[prayerIndex];
     final updatedPrayer = prayer.copyWith(
       isCompleted: !prayer.isCompleted,
       completedAt: !prayer.isCompleted ? DateTime.now() : null,
     );
-
+    
     final updatedPrayers = List<PrayerRecord>.from(dayRecord.prayers);
     updatedPrayers[prayerIndex] = updatedPrayer;
-
+    
     final updatedDayRecord = dayRecord.copyWith(prayers: updatedPrayers);
     _dailyRecords[dayKey] = updatedDayRecord;
-
+    
     await _saveToStorage();
 
     // Try to sync with API
