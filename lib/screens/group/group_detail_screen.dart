@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import '../../models/group.dart';
 import '../../models/task.dart';
 import '../../models/user.dart';
+import '../../core/network/connectivity_service.dart';
 import '../text/arabic_text_viewer_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
@@ -17,12 +19,13 @@ class GroupDetailScreen extends StatefulWidget {
 
 class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final _storageService = StorageService();
+  final _apiService = ApiService();
   Group? _group;
   List<Task> _tasks = [];
   List<User> _participants = [];
   bool _isLoading = true;
   User? _currentUser;
-  
+
   // PERFORMANCE: Pagination state for task lists with 30+ items
   static const int _tasksPerPage = 20;
   int _visibleTaskCount = 20;
@@ -40,6 +43,90 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     try {
       _currentUser = _storageService.currentUser;
+
+      // Check if user is logged in
+      final token = await _storageService.getAuthToken();
+      if (_currentUser == null || token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Lütfen önce giriş yapın'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          // Navigate to login screen
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+        return;
+      }
+
+      // Set auth token for API calls
+      _apiService.setAuthToken(token);
+
+      // PERFORMANCE: Skip API call if offline - use local storage directly
+      final connectivity = ConnectivityService.instance;
+
+      if (connectivity.isOnline) {
+        // Try backend API first
+        try {
+          final apiGroup = await _apiService.getGroupDetails(widget.groupId);
+          final apiTasks = await _apiService.getGroupTasks(widget.groupId);
+
+          if (apiGroup != null && apiTasks != null && mounted) {
+            // Convert API response to local models
+            final groupData = apiGroup['data'] ?? apiGroup;
+            final tasksData = apiTasks;
+
+            final group = Group(
+              id: groupData['id'],
+              title: groupData['title'],
+              description: groupData['description'] ?? '',
+              creatorId: groupData['creatorId'] ?? '',
+              type: groupData['type'],
+              targetCount: groupData['targetCount'],
+              currentProgress: groupData['currentProgress'] ?? 0,
+              isPrivate: groupData['isPrivate'] ?? false,
+              deadline: groupData['deadline'] != null ? DateTime.parse(groupData['deadline']) : null,
+              inviteCode: groupData['inviteCode'],
+              isActive: groupData['isActive'] ?? true,
+              createdAt: DateTime.parse(groupData['createdAt']),
+              participantIds: List<String>.from(groupData['participantIds'] ?? []),
+            );
+
+            final tasks = tasksData.map<Task>((taskData) => Task(
+              id: taskData['id'],
+              groupId: taskData['groupId'],
+              taskIndex: (taskData['taskIndex'] as num?)?.toInt() ?? 0,
+              assignedTo: taskData['assignedTo'],
+              status: taskData['status'] ?? 'available',
+              assignedAt: taskData['assignedAt'] != null ? DateTime.parse(taskData['assignedAt']) : null,
+              completedAt: taskData['completedAt'] != null ? DateTime.parse(taskData['completedAt']) : null,
+              amount: (taskData['amount'] as num?)?.toInt(),
+            )).toList();
+
+            final participants = group.participantIds
+                .map((id) => _storageService.getUserByIdSync(id))
+                .where((user) => user != null)
+                .cast<User>()
+                .toList();
+
+            setState(() {
+              _group = group;
+              _tasks = tasks;
+              _participants = participants;
+              _isLoading = false;
+              // PERFORMANCE: Reset pagination when data is reloaded
+              _visibleTaskCount = _tasksPerPage;
+            });
+            return;
+          }
+        } catch (apiError) {
+          // API call failed, fall back to local storage
+          print('API call failed for group details, using local storage: $apiError');
+        }
+      }
+
+      // Fallback to local storage
       final group = await _storageService.getGroupById(widget.groupId);
       final tasks = await _storageService.getGroupTasks(widget.groupId);
       final participants = _storageService.getGroupParticipants(widget.groupId);

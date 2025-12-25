@@ -97,8 +97,26 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       );
       return;
     }
-    
+
     if (!_formKey.currentState!.validate()) return;
+
+    // Check if user is logged in
+    final currentUser = _storageService.currentUser;
+    final token = await _storageService.getAuthToken();
+
+    if (currentUser == null || token == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lütfen önce giriş yapın'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        // Navigate to login screen
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+      return;
+    }
 
     setState(() {
       _isLoading = true;
