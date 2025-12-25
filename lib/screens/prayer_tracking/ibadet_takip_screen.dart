@@ -4,6 +4,29 @@ import '../../models/prayer_tracking.dart';
 import '../../services/prayer_tracking_service.dart';
 import 'dart:async';
 
+/// PERFORMANCE: Helper widget that keeps tab content alive when switching tabs
+/// This prevents unnecessary rebuilds when the user switches between tabs
+class _KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAliveWrapper({required this.child});
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    return widget.child;
+  }
+}
+
 class IbadetTakipScreen extends StatefulWidget {
   const IbadetTakipScreen({Key? key}) : super(key: key);
 
@@ -69,8 +92,8 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
         title: Column(
           children: [
             const Text(
-              'İbadet Takip',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'Namaz Takip',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
               DateFormat('dd MMMM yyyy', 'tr_TR').format(_selectedDate),
@@ -104,13 +127,14 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
           ],
         ),
       ),
+      // PERFORMANCE: KeepAliveWrapper prevents tab content from being disposed
+      // when switching tabs, reducing unnecessary rebuilds
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildDailyView(),
-          _buildWeeklyView(),
-          _buildStatsView(),
-          // Removed _buildKazaView(),
+          _KeepAliveWrapper(child: _buildDailyView()),
+          _KeepAliveWrapper(child: _buildWeeklyView()),
+          _KeepAliveWrapper(child: _buildStatsView()),
         ],
       ),
     );
@@ -451,7 +475,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
                     value: additional.tespih,
                     onChanged: (value) => _updateAdditionalPrayer('tespih', value ?? false),
                   ),
-                  const Text('Tespih'),
+                  const Text('Tesbih'),
                 ],
               ),
             ),
@@ -657,7 +681,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
             LinearProgressIndicator(
               value: stats.weeklyFardCompletionRate,
               backgroundColor: Colors.grey.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
             ),
             const SizedBox(height: 8),
             Text(

@@ -41,7 +41,7 @@ class ThemeService extends ChangeNotifier {
         background: _backgroundLight,
         surface: _surfaceLight,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: _surfaceLight,
         foregroundColor: _textLight,
         elevation: 0,
@@ -59,7 +59,7 @@ class ThemeService extends ChangeNotifier {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      textTheme: TextTheme(
+      textTheme: const TextTheme(
         headlineLarge: TextStyle(color: _textLight),
         headlineMedium: TextStyle(color: _textLight),
         headlineSmall: TextStyle(color: _textLight),
@@ -100,7 +100,7 @@ class ThemeService extends ChangeNotifier {
         background: _backgroundDark,
         surface: _surfaceDark,
       ),
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: _surfaceDark,
         foregroundColor: _textDark,
         elevation: 0,
@@ -118,7 +118,7 @@ class ThemeService extends ChangeNotifier {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      textTheme: TextTheme(
+      textTheme: const TextTheme(
         headlineLarge: TextStyle(color: _textDark),
         headlineMedium: TextStyle(color: _textDark),
         headlineSmall: TextStyle(color: _textDark),

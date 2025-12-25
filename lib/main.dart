@@ -3,10 +3,24 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth/login_screen.dart';
 import 'services/theme_service.dart';
+import 'services/storage_service.dart';
+import 'services/location_service.dart';
+import 'core/network/connectivity_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('tr_TR', null);
+  
+  // Initialize services in parallel for faster startup
+  await Future.wait([
+    initializeDateFormatting('tr_TR', null),
+    StorageService.initialize(), // PERFORMANCE: Cache SharedPreferences instance
+    ConnectivityService.instance.initialize(), // PERFORMANCE: Monitor network connectivity
+  ]);
+  
+  // PERFORMANCE: Check location permission at startup (non-blocking)
+  // This pre-loads location state for faster subsequent requests
+  LocationService().initialize();
+  
   runApp(const DuaKardeslikApp());
 }
 

@@ -16,11 +16,41 @@ class StorageService {
     scopes: ['email', 'profile'],
   );
 
+  // Cached SharedPreferences instance - PERFORMANCE OPTIMIZATION
+  static SharedPreferences? _prefs;
+  static bool _isInitialized = false;
+
+  /// Initialize SharedPreferences cache. Call this once at app startup.
+  static Future<void> initialize() async {
+    if (!_isInitialized) {
+      _prefs = await SharedPreferences.getInstance();
+      _isInitialized = true;
+    }
+  }
+
+  /// Get cached SharedPreferences instance
+  Future<SharedPreferences> get _sharedPrefs async {
+    if (_prefs == null) {
+      await initialize();
+    }
+    return _prefs!;
+  }
+
+  /// Synchronous access to prefs (only use after initialization)
+  SharedPreferences? get _prefsSync => _prefs;
+
   // Keys for SharedPreferences
   static const String _themeKey = 'theme_mode';
   static const String _notificationPrefsKey = 'notification_preferences';
   static const String _prayerTimesKey = 'prayer_times';
+  static const String _prayerTimesCacheKey = 'prayer_times_cache_timestamp';
   static const String _locationKey = 'location';
+  static const String _locationCacheKey = 'location_cache_timestamp';
+  static const String _manualCityKey = 'manual_city';
+
+  // Cache duration constants
+  static const Duration prayerTimesCacheDuration = Duration(hours: 24);
+  static const Duration locationCacheDuration = Duration(minutes: 15);
 
   // In-memory storage
   final Map<String, User> _users = {};
@@ -34,31 +64,31 @@ class StorageService {
 
   // Theme preference methods
   Future<bool?> getThemePreference() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     final themeMode = prefs.getString(_themeKey);
     if (themeMode == null) return null;
     return themeMode == 'dark';
   }
 
   Future<void> saveThemePreference(bool isDarkMode) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     await prefs.setString(_themeKey, isDarkMode ? 'dark' : 'light');
   }
 
   // Theme mode methods (for compatibility)
   Future<void> saveThemeMode(String themeMode) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     await prefs.setString(_themeKey, themeMode);
   }
 
   Future<String> getThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     return prefs.getString(_themeKey) ?? 'system';
   }
 
   // Notification preferences methods
   Future<NotificationPreferences> getNotificationPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     final jsonString = prefs.getString(_notificationPrefsKey);
     
     if (jsonString != null) {
@@ -77,7 +107,7 @@ class StorageService {
   }
 
   Future<void> saveNotificationPreferences(NotificationPreferences preferences) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     final json = {
       'enabled': preferences.enabled,
       'earlyReminderMinutes': preferences.earlyReminderMinutes,
@@ -109,14 +139,15 @@ class StorageService {
     await saveNotificationPreferences(_notificationPrefs);
   }
 
-  // Prayer times storage
+  // Prayer times storage with 24-hour cache
   Future<void> savePrayerTimes(Map<String, dynamic> prayerTimes) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     await prefs.setString(_prayerTimesKey, jsonEncode(prayerTimes));
+    await prefs.setInt(_prayerTimesCacheKey, DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<Map<String, dynamic>?> getPrayerTimes() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     final jsonString = prefs.getString(_prayerTimesKey);
     if (jsonString != null) {
       return jsonDecode(jsonString);
@@ -124,17 +155,44 @@ class StorageService {
     return null;
   }
 
-  // Location storage
+  /// Check if prayer times cache is still valid (less than 24 hours old)
+  Future<bool> isPrayerTimesCacheValid() async {
+    final prefs = await _sharedPrefs;
+    final cacheTimestamp = prefs.getInt(_prayerTimesCacheKey);
+    if (cacheTimestamp == null) return false;
+    
+    final cacheTime = DateTime.fromMillisecondsSinceEpoch(cacheTimestamp);
+    final now = DateTime.now();
+    
+    // Cache is valid if it's from today AND less than 24 hours old
+    final isSameDay = cacheTime.year == now.year && 
+                      cacheTime.month == now.month && 
+                      cacheTime.day == now.day;
+    final isWithinDuration = now.difference(cacheTime) < prayerTimesCacheDuration;
+    
+    return isSameDay && isWithinDuration;
+  }
+
+  /// Get cached prayer times if valid, otherwise return null
+  Future<Map<String, dynamic>?> getCachedPrayerTimes() async {
+    if (await isPrayerTimesCacheValid()) {
+      return getPrayerTimes();
+    }
+    return null;
+  }
+
+  // Location storage with 15-minute cache
   Future<void> saveLocation(double latitude, double longitude) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     await prefs.setString(_locationKey, jsonEncode({
       'latitude': latitude,
       'longitude': longitude,
     }));
+    await prefs.setInt(_locationCacheKey, DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<Map<String, double>?> getLocation() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _sharedPrefs;
     final jsonString = prefs.getString(_locationKey);
     if (jsonString != null) {
       final json = jsonDecode(jsonString);
@@ -142,6 +200,54 @@ class StorageService {
         'latitude': json['latitude'],
         'longitude': json['longitude'],
       };
+    }
+    return null;
+  }
+
+  /// Check if location cache is still valid (less than 15 minutes old)
+  Future<bool> isLocationCacheValid() async {
+    final prefs = await _sharedPrefs;
+    final cacheTimestamp = prefs.getInt(_locationCacheKey);
+    if (cacheTimestamp == null) return false;
+    
+    final cacheTime = DateTime.fromMillisecondsSinceEpoch(cacheTimestamp);
+    return DateTime.now().difference(cacheTime) < locationCacheDuration;
+  }
+
+  /// Get cached location if valid, otherwise return null
+  Future<Map<String, double>?> getCachedLocation() async {
+    if (await isLocationCacheValid()) {
+      return getLocation();
+    }
+    return null;
+  }
+
+  // Manual city selection methods (for users who don't want to share location)
+  Future<void> saveManualCity(dynamic city) async {
+    final prefs = await _sharedPrefs;
+    if (city == null) {
+      await prefs.remove(_manualCityKey);
+    } else {
+      await prefs.setString(_manualCityKey, jsonEncode(city.toMap()));
+    }
+  }
+
+  Future<void> clearManualCity() async {
+    final prefs = await _sharedPrefs;
+    await prefs.remove(_manualCityKey);
+  }
+
+  Future<dynamic> getManualCity() async {
+    final prefs = await _sharedPrefs;
+    final jsonString = prefs.getString(_manualCityKey);
+    if (jsonString != null) {
+      // Import dynamically to avoid circular dependency
+      final map = jsonDecode(jsonString) as Map<String, dynamic>;
+      return _TurkishCityData(
+        name: map['name'] ?? '',
+        latitude: (map['latitude'] as num).toDouble(),
+        longitude: (map['longitude'] as num).toDouble(),
+      );
     }
     return null;
   }
@@ -297,6 +403,18 @@ class StorageService {
           id: _generateId(),
           groupId: group.id,
           taskIndex: i,
+        );
+        _tasks[task.id] = task;
+      }
+    } else if (group.type == 'cevsen') {
+      // Cevşen-ül Kebir: 100 bab, 20 görev (her biri 5 bab)
+      // 1-5, 6-10, 11-15, ... 96-100
+      for (int i = 1; i <= 20; i++) {
+        final task = Task(
+          id: _generateId(),
+          groupId: group.id,
+          taskIndex: i,
+          amount: 5, // Her görev 5 bab
         );
         _tasks[task.id] = task;
       }
@@ -498,4 +616,23 @@ class StorageService {
     
     return '${date.day} ${months[date.month - 1]}, ${date.year}';
   }
+}
+
+/// Simple data class for manual city (to avoid circular imports)
+class _TurkishCityData {
+  final String name;
+  final double latitude;
+  final double longitude;
+
+  _TurkishCityData({
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 } 

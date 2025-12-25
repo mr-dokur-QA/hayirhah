@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../core/network/connectivity_service.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({Key? key}) : super(key: key);
@@ -102,27 +103,35 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ? template['description'] 
           : _descriptionController.text.trim();
 
-      // Try backend API first
-      final result = await _apiService.createGroup(
-        title: title,
-        description: description,
-        type: _selectedTemplate!,
-        targetCount: targetCount,
-        isPrivate: _isPrivate,
-        deadline: _deadline?.toIso8601String(),
-      );
-
-      if (result != null && mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${result['data']['title']} başarıyla oluşturuldu!\nDavet Kodu: ${result['data']['inviteCode']}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 4),
-          ),
+      // PERFORMANCE: Skip API if offline - use local storage directly
+      final connectivity = ConnectivityService.instance;
+      
+      if (connectivity.isOnline) {
+        // Try backend API first
+        final result = await _apiService.createGroup(
+          title: title,
+          description: description,
+          type: _selectedTemplate!,
+          targetCount: targetCount,
+          isPrivate: _isPrivate,
+          deadline: _deadline?.toIso8601String(),
         );
-      } else if (mounted) {
-        // Fallback to local storage if API fails
+
+        if (result != null && mounted) {
+          Navigator.pop(context, true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${result['data']['title']} başarıyla oluşturuldu!\nDavet Kodu: ${result['data']['inviteCode']}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+      }
+      
+      // Fallback to local storage (fast path when offline or API fails)
+      if (mounted) {
         final group = await _storageService.createGroup(
           title: title,
           description: description,

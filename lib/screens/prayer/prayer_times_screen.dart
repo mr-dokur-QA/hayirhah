@@ -319,10 +319,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            const Color(0xFF667EEA),
-            const Color(0xFF764BA2),
+            Color(0xFF667EEA),
+            Color(0xFF764BA2),
           ],
         ),
         borderRadius: BorderRadius.circular(20),

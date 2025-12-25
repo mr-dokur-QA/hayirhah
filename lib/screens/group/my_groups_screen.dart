@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../models/group.dart';
+import '../../core/network/connectivity_service.dart';
 import 'group_detail_screen.dart';
 import 'create_group_screen.dart';
 
@@ -30,37 +31,43 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     });
 
     try {
-      // Try backend API first
-      final apiGroups = await _apiService.getUserGroups();
-      if (apiGroups != null) {
-        // Convert API response to Group objects
-        final List<Group> groups = apiGroups.map<Group>((groupData) => Group(
-          id: groupData['id'],
-          title: groupData['title'],
-          description: groupData['description'] ?? '',
-          creatorId: groupData['creatorId'] ?? '',
-          type: groupData['type'],
-          targetCount: groupData['targetCount'],
-          currentProgress: groupData['currentProgress'] ?? 0,
-          isPrivate: groupData['isPrivate'] ?? false,
-          deadline: groupData['deadline'] != null ? DateTime.parse(groupData['deadline']) : null,
-          inviteCode: groupData['inviteCode'],
-          isActive: groupData['isActive'] ?? true,
-          createdAt: DateTime.parse(groupData['createdAt']),
-        )).toList();
-        
-        setState(() {
-          _groups = groups;
-          _isLoading = false;
-        });
-      } else {
-        // Fallback to local storage
-        final groups = await _storageService.getUserGroups();
-        setState(() {
-          _groups = groups;
-          _isLoading = false;
-        });
+      // PERFORMANCE: Skip API call if offline - use local storage directly
+      final connectivity = ConnectivityService.instance;
+      
+      if (connectivity.isOnline) {
+        // Try backend API first (with short timeout due to Dio config)
+        final apiGroups = await _apiService.getUserGroups();
+        if (apiGroups != null) {
+          // Convert API response to Group objects
+          final List<Group> groups = apiGroups.map<Group>((groupData) => Group(
+            id: groupData['id'],
+            title: groupData['title'],
+            description: groupData['description'] ?? '',
+            creatorId: groupData['creatorId'] ?? '',
+            type: groupData['type'],
+            targetCount: groupData['targetCount'],
+            currentProgress: groupData['currentProgress'] ?? 0,
+            isPrivate: groupData['isPrivate'] ?? false,
+            deadline: groupData['deadline'] != null ? DateTime.parse(groupData['deadline']) : null,
+            inviteCode: groupData['inviteCode'],
+            isActive: groupData['isActive'] ?? true,
+            createdAt: DateTime.parse(groupData['createdAt']),
+          )).toList();
+          
+          setState(() {
+            _groups = groups;
+            _isLoading = false;
+          });
+          return;
+        }
       }
+      
+      // Fallback to local storage (fast path)
+      final groups = await _storageService.getUserGroups();
+      setState(() {
+        _groups = groups;
+        _isLoading = false;
+      });
     } catch (e) {
       // Fallback to local storage on error
       try {
@@ -89,7 +96,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
       appBar: AppBar(
         title: const Text(
           'Etkinliklerim',
-          style: TextStyle(
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -187,9 +194,15 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _groups.length,
+      // PERFORMANCE: cacheExtent improves scroll performance for long lists
+      cacheExtent: 300,
       itemBuilder: (context, index) {
         final group = _groups[index];
-        return _buildGroupCard(group);
+        // PERFORMANCE: ValueKey enables efficient widget diffing
+        return KeyedSubtree(
+          key: ValueKey(group.id),
+          child: _buildGroupCard(group),
+        );
       },
     );
   }

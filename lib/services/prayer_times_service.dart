@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:flutter/material.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
+import 'location_service.dart';
 import '../models/notification_preferences.dart';
 
 class PrayerTime {
@@ -40,17 +41,23 @@ class PrayerTimesService extends ChangeNotifier {
   PrayerTimesService._internal();
 
   final NotificationService _notificationService = NotificationService();
+  final StorageService _storageService = StorageService();
+  
   List<PrayerTime> _prayerTimes = [];
   String _cityName = '';
   String _countryName = '';
   bool _isLoading = false;
   String? _error;
   NotificationPreferences _notificationPrefs = NotificationPreferences(enabled: true);
+  
+  // Cache tracking
+  bool _isLoadedFromCache = false;
 
   List<PrayerTime> get prayerTimes => _prayerTimes;
   String get locationName => '$_cityName, $_countryName';
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isLoadedFromCache => _isLoadedFromCache;
 
   bool getNotificationStatus(String prayerName) {
     final key = _getPrayerKey(prayerName);
@@ -92,21 +99,78 @@ class PrayerTimesService extends ChangeNotifier {
     }
   }
 
-  Future<void> loadPrayerTimes() async {
+  Future<void> loadPrayerTimes({bool forceRefresh = false}) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      // Get current location
-      final position = await _getCurrentLocation();
-      if (position == null) {
-        _error = 'Konum alınamadı. Lütfen konum izni verin.';
+      // PERFORMANCE: Try to load from cache first (unless force refresh)
+      if (!forceRefresh && await _tryLoadFromCache()) {
+        _isLoadedFromCache = true;
+        _isLoading = false;
+        notifyListeners();
         return;
       }
 
-      // Get location name
-      await _getLocationName(position);
+      // Get current location (try manual city, then cache, then GPS)
+      Position? position;
+      final locationService = LocationService();
+      
+      // Check for manual city selection first (user preference)
+      if (locationService.selectedCity != null) {
+        final city = locationService.selectedCity!;
+        position = Position(
+          latitude: city.latitude,
+          longitude: city.longitude,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+        _cityName = city.name;
+        _countryName = 'Türkiye';
+      } else {
+        // Try cached location
+        final cachedLocation = await _storageService.getCachedLocation();
+        
+        if (cachedLocation != null && !forceRefresh) {
+          // Use cached location
+          position = Position(
+            latitude: cachedLocation['latitude']!,
+            longitude: cachedLocation['longitude']!,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+        } else {
+          // Get fresh GPS location
+          position = await _getCurrentLocation();
+          if (position != null) {
+            // Cache the new location
+            await _storageService.saveLocation(position.latitude, position.longitude);
+          }
+        }
+      }
+
+      if (position == null) {
+        _error = 'Konum alınamadı. Lütfen konum izni verin veya Ayarlar\'dan şehir seçin.';
+        return;
+      }
+
+      // Get location name (only if not using manual city)
+      if (locationService.selectedCity == null) {
+        await _getLocationName(position);
+      }
 
       // Fetch prayer times with retry logic
       final response = await _fetchPrayerTimesWithRetry(position);
@@ -124,6 +188,13 @@ class PrayerTimesService extends ChangeNotifier {
           PrayerTime.fromJson('Yatsı', timings['Isha'], ''),
         ];
 
+        // PERFORMANCE: Save to cache for next time
+        await _storageService.savePrayerTimes({
+          'timings': timings,
+          'locationName': '$_cityName, $_countryName',
+        });
+        _isLoadedFromCache = false;
+
         // Schedule notifications
         final prayerTimesMap = {
           'Fajr': timings['Fajr'],
@@ -136,13 +207,64 @@ class PrayerTimesService extends ChangeNotifier {
 
         _error = null;
       } else {
-        _error = 'Namaz vakitleri alınamadı. İnternet bağlantınızı kontrol edin.';
+        // PERFORMANCE: Try to use stale cache as fallback
+        if (await _tryLoadFromCache(ignoreExpiry: true)) {
+          _error = null; // Clear error since we have data
+        } else {
+          _error = 'Namaz vakitleri alınamadı. İnternet bağlantınızı kontrol edin.';
+        }
       }
     } catch (e) {
       _error = 'Bir hata oluştu: $e';
+      // Try stale cache as last resort
+      await _tryLoadFromCache(ignoreExpiry: true);
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Try to load prayer times from cache
+  /// Returns true if successfully loaded from cache
+  Future<bool> _tryLoadFromCache({bool ignoreExpiry = false}) async {
+    try {
+      final isCacheValid = await _storageService.isPrayerTimesCacheValid();
+      
+      if (!isCacheValid && !ignoreExpiry) {
+        return false;
+      }
+
+      final cachedData = await _storageService.getPrayerTimes();
+      if (cachedData == null) {
+        return false;
+      }
+
+      final timings = cachedData['timings'];
+      if (timings == null) {
+        return false;
+      }
+
+      _prayerTimes = [
+        PrayerTime.fromJson('İmsak', timings['Fajr'], ''),
+        PrayerTime.fromJson('Güneş', timings['Sunrise'], ''),
+        PrayerTime.fromJson('Öğle', timings['Dhuhr'], ''),
+        PrayerTime.fromJson('İkindi', timings['Asr'], ''),
+        PrayerTime.fromJson('Akşam', timings['Maghrib'], ''),
+        PrayerTime.fromJson('Yatsı', timings['Isha'], ''),
+      ];
+
+      // Restore location name from cache
+      final locationName = cachedData['locationName'] as String?;
+      if (locationName != null && locationName.contains(',')) {
+        final parts = locationName.split(',');
+        _cityName = parts[0].trim();
+        _countryName = parts.length > 1 ? parts[1].trim() : '';
+      }
+
+      return true;
+    } catch (e) {
+      print('Error loading from cache: $e');
+      return false;
     }
   }
 
@@ -256,10 +378,11 @@ class PrayerTimesService extends ChangeNotifier {
         return null;
       }
 
-      // Get current position with timeout
+      // PERFORMANCE: Use low accuracy first for faster response, then upgrade if needed
+      // Low accuracy uses network-based location (fast) instead of GPS (slow)
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
       );
     } catch (e) {
       print('Error getting location: $e');

@@ -1,83 +1,78 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import '../core/network/dio_client.dart';
 
+/// API Service using Dio for HTTP requests
+/// Features: Interceptors, retry logic, timeout handling, JWT support
 class ApiService {
-  // Use localhost for development, can be changed to production URL later
-  static const String baseUrl = 'http://localhost:3000/api';
-  
-  // Authentication endpoints
-  static const String loginEndpoint = '$baseUrl/auth/login';
-  static const String profileEndpoint = '$baseUrl/auth/profile';
-  
-  // Group endpoints
-  static const String groupsEndpoint = '$baseUrl/groups';
-  static const String joinGroupEndpoint = '$baseUrl/groups/join';
-  
-  // Prayer tracking endpoints
-  static const String prayerTrackingEndpoint = '$baseUrl/prayer-tracking';
+  final DioClient _client = DioClient();
 
-  String? _authToken;
-  
-  // Set auth token
+  // Endpoints
+  static const String _authLogin = '/auth/login';
+  static const String _authProfile = '/auth/profile';
+  static const String _groups = '/groups';
+  static const String _groupsJoin = '/groups/join';
+  static const String _prayerTracking = '/prayer-tracking';
+
+  /// Set auth token
   void setAuthToken(String token) {
-    _authToken = token;
+    _client.setAuthToken(token);
   }
-  
-  // Get auth headers
-  Map<String, String> get _authHeaders => {
-    'Content-Type': 'application/json',
-    if (_authToken != null) 'Authorization': 'Bearer $_authToken',
-  };
 
-  // Authentication
+  /// Clear auth token
+  void clearAuthToken() {
+    _client.clearAuth();
+  }
+
+  // ==================== Authentication ====================
+
+  /// Login with email and password
   Future<Map<String, dynamic>?> login({
     required String email,
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(loginEndpoint),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final response = await _client.post(
+        _authLogin,
+        data: {
           'email': email,
           'password': password,
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _authToken = data['data']['tokens']['accessToken'];
-        return data;
-      } else {
-        print('Login failed: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      print('Login error: $e');
-      return null;
-    }
-  }
-
-  Future<Map<String, dynamic>?> getProfile() async {
-    try {
-      final response = await http.get(
-        Uri.parse(profileEndpoint),
-        headers: _authHeaders,
+        },
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Get profile failed: ${response.body}');
-        return null;
+        final data = response.data;
+        final token = data['data']?['tokens']?['accessToken'];
+        if (token != null) {
+          _client.setAuthToken(token);
+        }
+        return data;
       }
-    } catch (e) {
-      print('Get profile error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Login', e);
       return null;
     }
   }
 
-  // Group Management
+  /// Get user profile
+  Future<Map<String, dynamic>?> getProfile() async {
+    try {
+      final response = await _client.get(_authProfile);
+
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get profile', e);
+      return null;
+    }
+  }
+
+  // ==================== Group Management ====================
+
+  /// Create a new group
   Future<Map<String, dynamic>?> createGroup({
     required String title,
     String? description,
@@ -87,214 +82,214 @@ class ApiService {
     String? deadline,
   }) async {
     try {
-      final requestBody = {
+      final requestBody = <String, dynamic>{
         'title': title,
         'type': type,
         'targetCount': targetCount,
         'isPrivate': isPrivate,
       };
-      
+
       if (description != null) requestBody['description'] = description;
       if (deadline != null) requestBody['deadline'] = deadline;
 
-      final response = await http.post(
-        Uri.parse(groupsEndpoint),
-        headers: _authHeaders,
-        body: jsonEncode(requestBody),
-      );
+      final response = await _client.post(_groups, data: requestBody);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        print('Group created successfully: ${data['data']['inviteCode']}');
-        return data;
-      } else {
-        print('Create group failed: ${response.body}');
-        return null;
+        debugPrint('✅ Group created: ${response.data['data']['inviteCode']}');
+        return response.data;
       }
-    } catch (e) {
-      print('Create group error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Create group', e);
       return null;
     }
   }
 
+  /// Get user's groups
   Future<List<Map<String, dynamic>>?> getUserGroups() async {
     try {
-      final response = await http.get(
-        Uri.parse(groupsEndpoint),
-        headers: _authHeaders,
-      );
+      final response = await _client.get(_groups);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['data']);
-      } else {
-        print('Get user groups failed: ${response.body}');
-        return null;
+        return List<Map<String, dynamic>>.from(response.data['data']);
       }
-    } catch (e) {
-      print('Get user groups error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get user groups', e);
       return null;
     }
   }
 
+  /// Join a group with invite code
   Future<Map<String, dynamic>?> joinGroup(String inviteCode) async {
     try {
-      final response = await http.post(
-        Uri.parse(joinGroupEndpoint),
-        headers: _authHeaders,
-        body: jsonEncode({'inviteCode': inviteCode}),
+      final response = await _client.post(
+        _groupsJoin,
+        data: {'inviteCode': inviteCode},
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Join group failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Join group error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Join group', e);
       return null;
     }
   }
 
+  /// Get group details
   Future<Map<String, dynamic>?> getGroupDetails(String groupId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$groupsEndpoint/$groupId'),
-        headers: _authHeaders,
-      );
+      final response = await _client.get('$_groups/$groupId');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Get group details failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Get group details error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get group details', e);
       return null;
     }
   }
 
+  /// Get group tasks
   Future<List<Map<String, dynamic>>?> getGroupTasks(String groupId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$groupsEndpoint/$groupId/tasks'),
-        headers: _authHeaders,
-      );
+      final response = await _client.get('$_groups/$groupId/tasks');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['data']);
-      } else {
-        print('Get group tasks failed: ${response.body}');
-        return null;
+        return List<Map<String, dynamic>>.from(response.data['data']);
       }
-    } catch (e) {
-      print('Get group tasks error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get group tasks', e);
       return null;
     }
   }
 
+  /// Assign a task
   Future<Map<String, dynamic>?> assignTask(String groupId, String taskId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$groupsEndpoint/$groupId/tasks/assign'),
-        headers: _authHeaders,
-        body: jsonEncode({'taskId': taskId}),
+      final response = await _client.post(
+        '$_groups/$groupId/tasks/assign',
+        data: {'taskId': taskId},
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Assign task failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Assign task error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Assign task', e);
       return null;
     }
   }
 
+  /// Complete a task
   Future<Map<String, dynamic>?> completeTask(String groupId, String taskId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$groupsEndpoint/$groupId/tasks/complete'),
-        headers: _authHeaders,
-        body: jsonEncode({'taskId': taskId}),
+      final response = await _client.post(
+        '$_groups/$groupId/tasks/complete',
+        data: {'taskId': taskId},
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Complete task failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Complete task error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Complete task', e);
       return null;
     }
   }
 
-  // Prayer Tracking
+  // ==================== Prayer Tracking ====================
+
+  /// Get daily prayer record
   Future<Map<String, dynamic>?> getDailyPrayerRecord(String date) async {
     try {
-      final response = await http.get(
-        Uri.parse('$prayerTrackingEndpoint/$date'),
-        headers: _authHeaders,
-      );
+      final response = await _client.get('$_prayerTracking/$date');
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Get daily prayer record failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Get daily prayer record error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get daily prayer record', e);
       return null;
     }
   }
 
+  /// Update daily prayer record
   Future<Map<String, dynamic>?> updateDailyPrayerRecord(
     String date,
     Map<String, dynamic> data,
   ) async {
     try {
-      final response = await http.put(
-        Uri.parse('$prayerTrackingEndpoint/$date'),
-        headers: _authHeaders,
-        body: jsonEncode(data),
+      final response = await _client.put(
+        '$_prayerTracking/$date',
+        data: data,
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print('Update daily prayer record failed: ${response.body}');
-        return null;
+        return response.data;
       }
-    } catch (e) {
-      print('Update daily prayer record error: $e');
+      return null;
+    } on DioException catch (e) {
+      _handleError('Update daily prayer record', e);
       return null;
     }
   }
 
-  // Check if backend is available and return appropriate mode
+  // ==================== Health Check ====================
+
+  /// Check backend connection status
   Future<String> getConnectionStatus() async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/health'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 5));
-      
+      final response = await _client.get('/health');
+
       if (response.statusCode == 200) {
         return 'connected';
-      } else {
-        return 'unavailable';
       }
-    } catch (e) {
-      print('Backend health check failed: $e');
-      return 'offline';
+      return 'unavailable';
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        return 'offline';
+      }
+      return 'unavailable';
     }
   }
-} 
+
+  // ==================== Error Handling ====================
+
+  void _handleError(String operation, DioException e) {
+    String message = '$operation error: ';
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+        message += 'Connection timeout';
+        break;
+      case DioExceptionType.sendTimeout:
+        message += 'Send timeout';
+        break;
+      case DioExceptionType.receiveTimeout:
+        message += 'Receive timeout';
+        break;
+      case DioExceptionType.badResponse:
+        message += 'Bad response (${e.response?.statusCode}): ${e.response?.data}';
+        break;
+      case DioExceptionType.cancel:
+        message += 'Request cancelled';
+        break;
+      case DioExceptionType.connectionError:
+        message += 'Connection error';
+        break;
+      default:
+        message += e.message ?? 'Unknown error';
+    }
+
+    debugPrint('❌ $message');
+  }
+}
