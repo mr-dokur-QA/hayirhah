@@ -275,9 +275,11 @@ class PrayerTrackingService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Load data from storage
+  // Load data from storage - PERFORMANCE: Uses cached SharedPreferences
   Future<void> loadFromStorage() async {
     try {
+      // Ensure StorageService is initialized first
+      await StorageService.initialize();
       final prefs = await SharedPreferences.getInstance();
       final jsonString = prefs.getString(_prayerTrackingKey);
       
@@ -294,7 +296,7 @@ class PrayerTrackingService extends ChangeNotifier {
     }
   }
 
-  // Save data to storage
+  // Save data to storage - PERFORMANCE: Uses cached SharedPreferences
   Future<void> _saveToStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();

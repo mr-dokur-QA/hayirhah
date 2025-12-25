@@ -40,17 +40,23 @@ class PrayerTimesService extends ChangeNotifier {
   PrayerTimesService._internal();
 
   final NotificationService _notificationService = NotificationService();
+  final StorageService _storageService = StorageService();
+  
   List<PrayerTime> _prayerTimes = [];
   String _cityName = '';
   String _countryName = '';
   bool _isLoading = false;
   String? _error;
   NotificationPreferences _notificationPrefs = NotificationPreferences(enabled: true);
+  
+  // Cache tracking
+  bool _isLoadedFromCache = false;
 
   List<PrayerTime> get prayerTimes => _prayerTimes;
   String get locationName => '$_cityName, $_countryName';
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isLoadedFromCache => _isLoadedFromCache;
 
   bool getNotificationStatus(String prayerName) {
     final key = _getPrayerKey(prayerName);
@@ -92,14 +98,47 @@ class PrayerTimesService extends ChangeNotifier {
     }
   }
 
-  Future<void> loadPrayerTimes() async {
+  Future<void> loadPrayerTimes({bool forceRefresh = false}) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      // Get current location
-      final position = await _getCurrentLocation();
+      // PERFORMANCE: Try to load from cache first (unless force refresh)
+      if (!forceRefresh && await _tryLoadFromCache()) {
+        _isLoadedFromCache = true;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // Get current location (try cache first)
+      Position? position;
+      final cachedLocation = await _storageService.getCachedLocation();
+      
+      if (cachedLocation != null && !forceRefresh) {
+        // Use cached location
+        position = Position(
+          latitude: cachedLocation['latitude']!,
+          longitude: cachedLocation['longitude']!,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+      } else {
+        // Get fresh location
+        position = await _getCurrentLocation();
+        if (position != null) {
+          // Cache the new location
+          await _storageService.saveLocation(position.latitude, position.longitude);
+        }
+      }
+
       if (position == null) {
         _error = 'Konum alınamadı. Lütfen konum izni verin.';
         return;
@@ -124,6 +163,13 @@ class PrayerTimesService extends ChangeNotifier {
           PrayerTime.fromJson('Yatsı', timings['Isha'], ''),
         ];
 
+        // PERFORMANCE: Save to cache for next time
+        await _storageService.savePrayerTimes({
+          'timings': timings,
+          'locationName': '$_cityName, $_countryName',
+        });
+        _isLoadedFromCache = false;
+
         // Schedule notifications
         final prayerTimesMap = {
           'Fajr': timings['Fajr'],
@@ -136,13 +182,64 @@ class PrayerTimesService extends ChangeNotifier {
 
         _error = null;
       } else {
-        _error = 'Namaz vakitleri alınamadı. İnternet bağlantınızı kontrol edin.';
+        // PERFORMANCE: Try to use stale cache as fallback
+        if (await _tryLoadFromCache(ignoreExpiry: true)) {
+          _error = null; // Clear error since we have data
+        } else {
+          _error = 'Namaz vakitleri alınamadı. İnternet bağlantınızı kontrol edin.';
+        }
       }
     } catch (e) {
       _error = 'Bir hata oluştu: $e';
+      // Try stale cache as last resort
+      await _tryLoadFromCache(ignoreExpiry: true);
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Try to load prayer times from cache
+  /// Returns true if successfully loaded from cache
+  Future<bool> _tryLoadFromCache({bool ignoreExpiry = false}) async {
+    try {
+      final isCacheValid = await _storageService.isPrayerTimesCacheValid();
+      
+      if (!isCacheValid && !ignoreExpiry) {
+        return false;
+      }
+
+      final cachedData = await _storageService.getPrayerTimes();
+      if (cachedData == null) {
+        return false;
+      }
+
+      final timings = cachedData['timings'];
+      if (timings == null) {
+        return false;
+      }
+
+      _prayerTimes = [
+        PrayerTime.fromJson('İmsak', timings['Fajr'], ''),
+        PrayerTime.fromJson('Güneş', timings['Sunrise'], ''),
+        PrayerTime.fromJson('Öğle', timings['Dhuhr'], ''),
+        PrayerTime.fromJson('İkindi', timings['Asr'], ''),
+        PrayerTime.fromJson('Akşam', timings['Maghrib'], ''),
+        PrayerTime.fromJson('Yatsı', timings['Isha'], ''),
+      ];
+
+      // Restore location name from cache
+      final locationName = cachedData['locationName'] as String?;
+      if (locationName != null && locationName.contains(',')) {
+        final parts = locationName.split(',');
+        _cityName = parts[0].trim();
+        _countryName = parts.length > 1 ? parts[1].trim() : '';
+      }
+
+      return true;
+    } catch (e) {
+      print('Error loading from cache: $e');
+      return false;
     }
   }
 
