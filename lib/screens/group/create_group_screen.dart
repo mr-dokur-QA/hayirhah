@@ -121,25 +121,66 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       
       if (connectivity.isOnline) {
         // Try backend API first
-        final result = await _apiService.createGroup(
-          title: title,
-          description: description,
-          type: _selectedTemplate!,
-          targetCount: targetCount,
-          isPrivate: _isPrivate,
-          deadline: _deadline?.toIso8601String(),
-        );
-
-        if (result != null && mounted) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${result['data']['title']} başarıyla oluşturuldu!\nDavet Kodu: ${result['data']['inviteCode']}'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 4),
-            ),
+        try {
+          final result = await _apiService.createGroup(
+            title: title,
+            description: description,
+            type: _selectedTemplate!,
+            targetCount: targetCount,
+            isPrivate: _isPrivate,
+            deadline: _deadline?.toIso8601String(),
           );
-          return;
+
+          if (result != null && mounted) {
+            // Extract group data from response
+            final groupData = result['data'] ?? result;
+            final groupTitle = groupData['title'] ?? title;
+            final inviteCode = groupData['inviteCode'] ?? 'N/A';
+            
+            Navigator.pop(context, true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$groupTitle başarıyla oluşturuldu!\nDavet Kodu: $inviteCode'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+            return;
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Grup oluşturulamadı. Lütfen tekrar deneyin.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        } catch (e) {
+          print('Create group error: $e');
+          if (mounted) {
+            String errorMessage = 'Grup oluşturulamadı';
+            
+            // Check DioException for specific error codes
+            if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+              errorMessage = 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.';
+              // Clear invalid tokens
+              await _storageService.clearAuthTokens();
+              _apiService.clearAuthToken();
+            } else if (e.toString().contains('400') || e.toString().contains('Bad Request')) {
+              errorMessage = 'Geçersiz grup bilgileri. Lütfen kontrol edin.';
+            } else if (e.toString().contains('Network') || e.toString().contains('timeout')) {
+              errorMessage = 'İnternet bağlantınızı kontrol edin';
+            } else if (e.toString().contains('500')) {
+              errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+            }
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         }
       }
       

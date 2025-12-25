@@ -128,13 +128,21 @@ class ApiService {
       final response = await _client.post(_groups, data: requestBody);
 
       if (response.statusCode == 201) {
-        debugPrint('✅ Group created: ${response.data['data']['inviteCode']}');
+        debugPrint('✅ Group created: ${response.data['data']?['inviteCode'] ?? 'N/A'}');
         return response.data;
       }
+      debugPrint('❌ Create group failed: ${response.statusCode}');
       return null;
     } on DioException catch (e) {
+      debugPrint('❌ Create group DioException: ${e.response?.statusCode} - ${e.message}');
+      if (e.response != null) {
+        final errorData = e.response?.data;
+        if (errorData is Map) {
+          debugPrint('Error details: ${errorData['error']} - ${errorData['message']}');
+        }
+      }
       _handleError('Create group', e);
-      return null;
+      rethrow; // Re-throw so caller can handle it
     }
   }
 

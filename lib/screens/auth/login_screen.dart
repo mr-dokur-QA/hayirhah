@@ -101,28 +101,11 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return; // Exit early on success
       } else {
-        // Fallback to local storage (demo mode)
-        print('Backend login failed, trying local demo mode...');
-        final user = await _storageService.loginUser(
-          _emailController.text.trim(),
-          _passwordController.text,
-        );
-
-        if (user != null && mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const DashboardScreen()),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Demo modunda giriş başarılı: ${user.username}'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        } else if (mounted) {
+        // Backend login failed - show error
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Demo girişi başarısız oldu'),
+              content: Text('E-posta veya şifre hatalı. Lütfen tekrar deneyin.'),
               backgroundColor: Colors.red,
             ),
           );
@@ -131,33 +114,18 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       print('Login error: $e');
       if (mounted) {
-        // Try local demo mode as fallback
-        try {
-          final user = await _storageService.loginUser(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
-          
-          if (user != null && mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const DashboardScreen()),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Demo modunda giriş başarılı: ${user.username}'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            return;
-          }
-        } catch (localError) {
-          print('Local login also failed: $localError');
+        String errorMessage = 'Giriş başarısız oldu';
+        
+        // Try to extract error message from DioException
+        if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+          errorMessage = 'E-posta veya şifre hatalı';
+        } else if (e.toString().contains('Network') || e.toString().contains('timeout')) {
+          errorMessage = 'İnternet bağlantınızı kontrol edin';
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Giriş hatası: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );
