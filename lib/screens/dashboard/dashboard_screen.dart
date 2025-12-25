@@ -6,6 +6,7 @@ import '../qibla/qibla_finder_screen.dart';
 import '../settings/settings_screen.dart';
 import '../prayer/prayer_times_screen.dart';
 import '../prayer_tracking/ibadet_takip_screen.dart';
+import '../ai_report/ai_report_screen.dart';
 import '../../services/prayer_times_service.dart';
 import '../../services/prayer_tracking_service.dart';
 
@@ -127,6 +128,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.checklist,
                 color: Colors.purple,
                 onTap: () => _navigateToIbadetTakip(context),
+              ),
+
+              const SizedBox(height: 16),
+
+              // AI Report button
+              _buildMainFeatureButton(
+                context,
+                title: 'AI Namaz Raporu',
+                subtitle: 'Yapay zeka destekli kişisel namaz analiziniz',
+                icon: Icons.auto_awesome,
+                color: Colors.amber.shade700,
+                onTap: () => _navigateToAIReport(context),
               ),
 
               const SizedBox(height: 16),
@@ -404,6 +417,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const IbadetTakipScreen()),
+    );
+  }
+
+  void _navigateToAIReport(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AIReportScreen()),
     );
   }
 

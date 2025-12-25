@@ -50,6 +50,7 @@ class StorageService {
   static const String _authTokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _currentUserIdKey = 'current_user_id';
+  static const String _groqApiKeyKey = 'groq_api_key';
 
   // Cache duration constants
   static const Duration prayerTimesCacheDuration = Duration(hours: 24);
@@ -663,6 +664,22 @@ class StorageService {
     await prefs.remove(_authTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_currentUserIdKey);
+  }
+
+  // Groq API Key methods
+  Future<void> saveGroqApiKey(String key) async {
+    final prefs = await _sharedPrefs;
+    await prefs.setString(_groqApiKeyKey, key);
+  }
+
+  Future<String?> getGroqApiKey() async {
+    final prefs = await _sharedPrefs;
+    return prefs.getString(_groqApiKeyKey);
+  }
+
+  Future<void> clearGroqApiKey() async {
+    final prefs = await _sharedPrefs;
+    await prefs.remove(_groqApiKeyKey);
   }
 
   // Türkçe tarih formatı için yardımcı fonksiyon
