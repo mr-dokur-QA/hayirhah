@@ -3,6 +3,8 @@ import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../core/network/connectivity_service.dart';
 import '../group/group_detail_screen.dart';
+import '../auth/login_screen.dart';
+import 'package:dio/dio.dart';
 
 class JoinGroupScreen extends StatefulWidget {
   const JoinGroupScreen({Key? key}) : super(key: key);
@@ -38,27 +40,58 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
       final connectivity = ConnectivityService.instance;
       if (connectivity.isOnline) {
         final token = await _storageService.getAuthToken();
-        if (token != null) {
-          _apiService.setAuthToken(token);
+        if (token == null || token.isEmpty) {
+          throw Exception('Lütfen önce giriş yapın');
         }
+        _apiService.setAuthToken(token);
 
-        final result = await _apiService.joinGroup(inviteCode);
-        if (result != null) {
-          final groupData = result['data'] ?? result;
-          final groupId = groupData['id'];
-          if (groupId != null && mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => GroupDetailScreen(groupId: groupId)),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${groupData['title'] ?? 'Etkinlik'} etkinliğine katıldınız!'),
-                backgroundColor: Colors.green,
-              ),
-            );
+        try {
+          final result = await _apiService.joinGroup(inviteCode);
+          if (result != null) {
+            final groupData = result['data'] ?? result;
+            final groupId = groupData['id'];
+            if (groupId != null && mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => GroupDetailScreen(groupId: groupId)),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${groupData['title'] ?? 'Etkinlik'} etkinliğine katıldınız!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              return;
+            }
+          }
+        } on DioException catch (e) {
+          final status = e.response?.statusCode;
+          if (status == 401) {
+            await _storageService.clearAuthTokens();
+            _apiService.clearAuthToken();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            }
             return;
           }
+
+          if (status == 404) {
+            throw Exception('Davet kodu geçersiz');
+          }
+          if (status == 400) {
+            // Could be already a member or invalid code
+            throw Exception('Bu davet kodu geçersiz veya zaten katıldınız');
+          }
+          throw Exception('Sunucu hatası (${status ?? 'bilinmiyor'})');
         }
       }
 
@@ -88,7 +121,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Katılım hatası: $e'),
+            content: Text('$e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -131,7 +164,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Size verilen 6 haneli davet kodunu girin',
+                'Size verilen davet kodunu girin (6 veya 10 hane)',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[600],
                 ),
@@ -143,7 +176,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
                 controller: _inviteCodeController,
                 decoration: const InputDecoration(
                   labelText: 'Davet Kodu',
-                  hintText: 'Örnek: ABC123',
+                  hintText: 'Örnek: ABC123 veya A1B2C3D4E5',
                   prefixIcon: Icon(Icons.vpn_key),
                   border: OutlineInputBorder(),
                 ),
@@ -160,7 +193,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
                 },
                 onChanged: (value) {
                   // Otomatik büyük harfe çevir
-                  if (value.length <= 6) {
+                  if (value.length <= 10) {
                     final upperValue = value.toUpperCase();
                     if (upperValue != value) {
                       _inviteCodeController.value = _inviteCodeController.value.copyWith(
@@ -207,7 +240,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Her etkinliğin kendine özel 6 haneli bir davet kodu vardır. Bu kodu etkinlik oluşturan kişiden alabilirsiniz.',
+                      'Her etkinliğin kendine özel bir davet kodu vardır (6 veya 10 hane). Bu kodu etkinlik oluşturan kişiden alabilirsiniz.',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.blue.shade600,

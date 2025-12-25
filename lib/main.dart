@@ -68,6 +68,9 @@ class _DuaKardeslikAppState extends State<DuaKardeslikApp> {
         Locale('tr', 'TR'),
         Locale('en', 'US'),
       ],
+      routes: {
+        '/login': (_) => const LoginScreen(),
+      },
       home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );

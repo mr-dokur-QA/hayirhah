@@ -190,7 +190,7 @@ class ApiService {
       return null;
     } on DioException catch (e) {
       _handleError('Join group', e);
-      return null;
+      rethrow;
     }
   }
 
