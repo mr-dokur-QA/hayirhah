@@ -71,13 +71,26 @@ const createGroupTasks = async (groupId: string, type: string, targetCount: numb
 
   const tasks = [];
   
-  // For sectioned types, create one task per section
-  for (let i = 1; i <= targetCount; i++) {
-    tasks.push({
-      groupId,
-      taskIndex: i,
-      status: 'available',
-    });
+  // Special handling for cevsen: 20 tasks (each task = 5 bab)
+  if (type === 'cevsen') {
+    const taskCount = 20; // 100 bab / 5 bab per task = 20 tasks
+    for (let i = 1; i <= taskCount; i++) {
+      tasks.push({
+        groupId,
+        taskIndex: i,
+        status: 'available',
+        amount: 5, // Each task represents 5 bab
+      });
+    }
+  } else {
+    // For other sectioned types, create one task per section
+    for (let i = 1; i <= targetCount; i++) {
+      tasks.push({
+        groupId,
+        taskIndex: i,
+        status: 'available',
+      });
+    }
   }
   
   // Batch insert for performance
