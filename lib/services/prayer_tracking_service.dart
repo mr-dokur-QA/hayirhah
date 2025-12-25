@@ -478,12 +478,12 @@ class PrayerTrackingService extends ChangeNotifier {
   ) {
     try {
       // Start with default record
-      final defaultRecord = _createDefaultDayRecord(userId, date);
+      var result = _createDefaultDayRecord(userId, date);
       
       // Parse fard prayers from backend
       final fardPrayers = record['fardPrayers'];
       if (fardPrayers is Map) {
-        final prayers = List<PrayerRecord>.from(defaultRecord.prayers);
+        final prayers = List<PrayerRecord>.from(result.prayers);
         
         for (final prayer in prayers) {
           final backendPrayer = fardPrayers[prayer.id.split('_').first];
@@ -499,19 +499,19 @@ class PrayerTrackingService extends ChangeNotifier {
           }
         }
         
-        defaultRecord = defaultRecord.copyWith(prayers: prayers);
+        result = result.copyWith(prayers: prayers);
       }
 
       // Parse sunnah prayers
       final sunnahPrayers = record['sunnahPrayers'];
       if (sunnahPrayers is Map) {
-        final additionalPrayers = defaultRecord.additionalPrayers.copyWith(
+        final additionalPrayers = result.additionalPrayers.copyWith(
           teheccud: sunnahPrayers['teheccud'] == true,
           duha: sunnahPrayers['duha'] == true,
           evvabin: sunnahPrayers['evvabin'] == true,
           tespih: sunnahPrayers['tespih'] == true,
         );
-        defaultRecord = defaultRecord.copyWith(additionalPrayers: additionalPrayers);
+        result = result.copyWith(additionalPrayers: additionalPrayers);
       }
 
       // Parse kaza prayers
@@ -527,14 +527,14 @@ class PrayerTrackingService extends ChangeNotifier {
         });
         
         if (kazaMap.isNotEmpty) {
-          final additionalPrayers = defaultRecord.additionalPrayers.copyWith(
+          final additionalPrayers = result.additionalPrayers.copyWith(
             kazaPrayers: kazaMap,
           );
-          defaultRecord = defaultRecord.copyWith(additionalPrayers: additionalPrayers);
+          result = result.copyWith(additionalPrayers: additionalPrayers);
         }
       }
 
-      return defaultRecord;
+      return result;
     } catch (e) {
       debugPrint('PrayerTrackingService: Error converting record: $e');
       return null;
