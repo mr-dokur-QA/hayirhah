@@ -35,6 +35,19 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         final profile = await _apiService.getProfile();
         if (profile != null && mounted) {
+          // Bootstrap current user in memory for the rest of the app
+          final userData = profile['user'] ?? profile['data']?['user'] ?? profile;
+          if (userData is Map && userData['id'] != null) {
+            final user = User(
+              id: userData['id'].toString(),
+              username: (userData['username'] ?? 'Kullanıcı').toString(),
+              email: (userData['email'] ?? '').toString(),
+              profilePhotoUrl: userData['profilePhotoUrl']?.toString(),
+              createdAt: DateTime.tryParse((userData['createdAt'] ?? '').toString()) ?? DateTime.now(),
+            );
+            _storageService.setCurrentUser(user);
+            await _storageService.saveCurrentUserId(user.id);
+          }
           // Token is valid, navigate to dashboard
           Navigator.pushReplacement(
             context,

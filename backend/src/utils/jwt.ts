@@ -4,7 +4,8 @@ import crypto from 'crypto';
 // Environment variables with defaults for development
 const JWT_SECRET = process.env.JWT_SECRET || 'hayirhah-dev-secret-key-min-32-chars';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'hayirhah-dev-refresh-secret-key-min-32-chars';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+// Default access token lifetime: 1 day (user shouldn't need to re-auth multiple times per day)
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 export interface JwtPayload {

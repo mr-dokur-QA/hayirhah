@@ -191,11 +191,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             
             // Check DioException for specific error codes
             if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+              // With refresh-token interceptor, a 401 here is likely not recoverable
               errorMessage = 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.';
-              // Clear invalid tokens
               await _storageService.clearAuthTokens();
               _apiService.clearAuthToken();
-              // Navigate to login screen
               Navigator.pushReplacementNamed(context, '/login');
               return;
             } else if (e.toString().contains('400') || e.toString().contains('Bad Request')) {

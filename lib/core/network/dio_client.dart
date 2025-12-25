@@ -1,11 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../../services/storage_service.dart';
 
 /// Dio HTTP client with interceptors for logging, error handling, and retry logic
 class DioClient {
   static DioClient? _instance;
   late Dio _dio;
   String? _authToken;
+  final StorageService _storageService = StorageService();
+
+  // Single-flight refresh
+  Future<String?>? _refreshInFlight;
 
   // Singleton pattern
   static DioClient get instance {
@@ -89,17 +94,94 @@ class DioClient {
         return handler.next(response);
       },
       onError: (error, handler) async {
-        // Handle 401 Unauthorized - Token expired
-        if (error.response?.statusCode == 401) {
-          // TODO: Implement token refresh logic here when backend is ready
-          debugPrint('🔐 Token expired or unauthorized');
+        // Handle 401 Unauthorized - try refresh flow once, then retry original request
+        final statusCode = error.response?.statusCode;
+        final requestOptions = error.requestOptions;
+        final isRefreshCall = requestOptions.extra['isRefreshCall'] == true ||
+            requestOptions.path.endsWith('/auth/refresh');
+        final hasRetried = requestOptions.extra['hasRetried'] == true;
+
+        if (statusCode == 401 && !isRefreshCall && !hasRetried) {
+          try {
+            final newAccessToken = await _refreshAccessToken();
+            if (newAccessToken != null) {
+              // Retry original request with new token
+              requestOptions.extra['hasRetried'] = true;
+              requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+              final clonedResponse = await _dio.fetch(requestOptions);
+              return handler.resolve(clonedResponse);
+            }
+          } catch (e) {
+            debugPrint('🔐 Refresh failed: $e');
+            // Fall through to propagate 401
+          }
         }
+
         return handler.next(error);
       },
     ));
 
     // Retry interceptor
     _dio.interceptors.add(_RetryInterceptor(dio: _dio));
+  }
+
+  Future<String?> _refreshAccessToken() async {
+    // Single-flight: if refresh already running, await it
+    if (_refreshInFlight != null) {
+      return _refreshInFlight;
+    }
+
+    _refreshInFlight = () async {
+      final refreshToken = await _storageService.getRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        return null;
+      }
+
+      try {
+        final response = await _dio.post(
+          '/auth/refresh',
+          data: {'refreshToken': refreshToken},
+          options: Options(
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            extra: const {'isRefreshCall': true},
+          ),
+        );
+
+        final data = response.data;
+        final tokens = (data is Map ? (data['tokens'] ?? data) : null);
+        if (tokens is Map) {
+          final accessToken = tokens['accessToken']?.toString();
+          final newRefreshToken = tokens['refreshToken']?.toString();
+
+          if (accessToken != null && accessToken.isNotEmpty) {
+            await _storageService.saveAuthToken(accessToken);
+            if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+              await _storageService.saveRefreshToken(newRefreshToken);
+            }
+            setAuthToken(accessToken);
+            return accessToken;
+          }
+        }
+      } catch (e) {
+        // If refresh fails, clear tokens to force re-login later
+        await _storageService.clearAuthTokens();
+        clearAuth();
+        rethrow;
+      } finally {
+        // noop
+      }
+
+      return null;
+    }();
+
+    try {
+      return await _refreshInFlight;
+    } finally {
+      _refreshInFlight = null;
+    }
   }
 
   /// GET request
