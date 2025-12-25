@@ -109,16 +109,25 @@ class PrayerTrackingService extends ChangeNotifier {
     
     await _saveToStorage();
 
-    // Try to sync with API
-    try {
-      final dateStr = date.toIso8601String().split('T')[0];
-      final apiData = updatedDayRecord.toApiFormat();
-      await _apiService.updateDailyPrayerRecord(dateStr, apiData);
-    } catch (e) {
-      print('Failed to sync prayer completion with API: $e');
+    notifyListeners();
+  }
+
+  /// Push the selected day's full record to the backend in a single API call.
+  Future<void> saveDayRecordToApi(DateTime date) async {
+    final currentUser = _storageService.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not logged in');
     }
 
-    notifyListeners();
+    final token = await _storageService.getAuthToken();
+    if (token != null) {
+      _apiService.setAuthToken(token);
+    }
+
+    final dayKey = _getDayKey(currentUser.id, date);
+    final record = _dailyRecords[dayKey] ?? _createDefaultDayRecord(currentUser.id, date);
+    final dateStr = date.toIso8601String().split('T')[0];
+    await _apiService.updateDailyPrayerRecord(dateStr, record.toApiFormat());
   }
 
   // Toggle sünnet completion for a prayer

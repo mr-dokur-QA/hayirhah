@@ -67,20 +67,29 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
     _hasChanges = false;
   }
 
-  void _scheduleAutoSave() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(const Duration(seconds: 2), () {
-      if (_hasChanges && _currentRecord != null) {
-        _autoSave();
-      }
-    });
-  }
-
-  Future<void> _autoSave() async {
-    if (mounted) {
+  Future<void> _saveChanges() async {
+    try {
+      await _trackingService.saveDayRecordToApi(_selectedDate);
+      if (!mounted) return;
       setState(() {
         _hasChanges = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kaydedildi'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Kaydetme hatası: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -110,7 +119,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
           if (_hasChanges)
             IconButton(
               icon: const Icon(Icons.save),
-              onPressed: _autoSave,
+              onPressed: _saveChanges,
             ),
           IconButton(
             icon: const Icon(Icons.calendar_today),
@@ -418,7 +427,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
       _loadCurrentRecord();
       _hasChanges = true;
     });
-    _scheduleAutoSave();
+    // User will explicitly save with the Save button (single API call)
   }
 
   Widget _buildSunnetNafileSection() {
@@ -560,7 +569,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
       _loadCurrentRecord();
       _hasChanges = true;
     });
-    _scheduleAutoSave();
+    // User will explicitly save with the Save button (single API call)
   }
 
   void _updateKazaPrayer(String prayerKey, int count) async {
@@ -569,7 +578,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
       _loadCurrentRecord();
       _hasChanges = true;
     });
-    _scheduleAutoSave();
+    // User will explicitly save with the Save button (single API call)
   }
 
   Widget _buildWeeklyView() {

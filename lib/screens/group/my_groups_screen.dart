@@ -58,6 +58,12 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             inviteCode: groupData['inviteCode'],
             isActive: groupData['isActive'] ?? true,
             createdAt: DateTime.parse(groupData['createdAt']),
+            participantIds: List<String>.from(
+              groupData['participantIds'] ??
+                  ((groupData['creatorId'] != null && groupData['creatorId'].toString().isNotEmpty)
+                      ? [groupData['creatorId']]
+                      : []),
+            ),
           )).toList();
           
           setState(() {

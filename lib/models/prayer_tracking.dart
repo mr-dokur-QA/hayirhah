@@ -256,31 +256,51 @@ class DailyPrayerTracking {
 
   // Convert to API format for backend
   Map<String, dynamic> toApiFormat() {
+    String _normalizePrayerKey(String input) {
+      final lower = input.trim().toLowerCase();
+      // Handle Turkish diacritics and common variants
+      if (lower == 'öğle' || lower == 'ogle') return 'ogle';
+      if (lower == 'akşam' || lower == 'aksam') return 'aksam';
+      if (lower == 'yatsı' || lower == 'yatsi') return 'yatsi';
+      if (lower == 'sabah') return 'sabah';
+      if (lower == 'ikindi') return 'ikindi';
+      return lower;
+    }
+
     // Group prayers by type for API format
     final fardPrayers = <String, dynamic>{};
-    final sunnahPrayers = <String, bool>{};
-    final kazaPrayers = <String, int>{};
 
     for (final prayer in prayers) {
       if (prayer.type == PrayerType.fard) {
-        fardPrayers[prayer.prayerName.toLowerCase()] = {
+        final key = _normalizePrayerKey(prayer.prayerName);
+        fardPrayers[key] = {
           'isCompleted': prayer.isCompleted,
           'completedSunnet': prayer.completedSunnet,
           'completedTesbihat': prayer.completedTesbihat,
         };
-      } else if (prayer.type == PrayerType.sunnah) {
-        sunnahPrayers[prayer.prayerName.toLowerCase()] = prayer.isCompleted;
       }
     }
 
-    // Add kaza prayers
-    kazaPrayers.addAll(additionalPrayers.kazaPrayers);
+    // Backend expects sunnahPrayers as { teheccud, duha, evvabin, tespih }
+    final sunnahPrayers = <String, bool>{
+      'teheccud': additionalPrayers.teheccud,
+      'duha': additionalPrayers.duha,
+      'evvabin': additionalPrayers.evvabin,
+      'tespih': additionalPrayers.tespih,
+    };
 
+    // Normalize kaza prayer keys for backend
+    final kazaPrayers = <String, int>{};
+    additionalPrayers.kazaPrayers.forEach((key, value) {
+      kazaPrayers[_normalizePrayerKey(key)] = value;
+    });
+
+    // Backend healthData is for unrelated metrics (water, exercise, etc.)
     return {
       'fardPrayers': fardPrayers,
       'sunnahPrayers': sunnahPrayers,
       'kazaPrayers': kazaPrayers,
-      'healthData': additionalPrayers.toHealthData(),
+      'healthData': <String, dynamic>{},
     };
   }
 
