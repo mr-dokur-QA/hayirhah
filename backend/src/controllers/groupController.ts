@@ -4,14 +4,24 @@ import { z } from 'zod';
 import crypto from 'crypto';
 
 // Group types
-const GROUP_TYPES = ['hatim', 'yasin', 'fetih', 'tefriciye', 'custom_parca', 'custom_sayi'] as const;
+const GROUP_TYPES = ['hatim', 'yasin', 'fetih', 'tefriciye', 'cevsen', 'custom_parca', 'custom_sayi', '1000_ihlas'] as const;
+
+// Task types: 'sectioned' = each item is a separate task (hatim, cevsen), 'numbered' = just a counter (tefriciye, 1000_ihlas)
+const SECTIONED_TYPES = ['hatim', 'yasin', 'fetih', 'cevsen', 'custom_parca'] as const;
+const NUMBERED_TYPES = ['tefriciye', '1000_ihlas', 'custom_sayi'] as const;
 
 // Validation schemas
 const createGroupSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(100, 'Title too long'),
   description: z.string().max(500, 'Description too long').optional(),
   type: z.enum(GROUP_TYPES),
-  targetCount: z.number().min(1, 'Target count must be at least 1').max(10000, 'Target count too high'),
+  targetCount: z.number()
+    .min(1, 'Target count must be at least 1')
+    .max(10000, 'Target count too high')
+    .refine((val) => {
+      // For numbered types, allow higher counts
+      return true;
+    }),
   isPrivate: z.boolean().optional().default(false),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
 });
@@ -50,9 +60,18 @@ const generateInviteCode = async (): Promise<string> => {
 };
 
 // Helper function to create tasks for a group
+// Only creates tasks for sectioned types (hatim, cevsen, etc.)
+// Numbered types (tefriciye, 1000_ihlas) don't create tasks - they use counters
 const createGroupTasks = async (groupId: string, type: string, targetCount: number): Promise<void> => {
+  // Only create tasks for sectioned types
+  if (!SECTIONED_TYPES.includes(type as any)) {
+    // Numbered types: Don't create tasks, progress tracked via counter
+    return;
+  }
+
   const tasks = [];
   
+  // For sectioned types, create one task per section
   for (let i = 1; i <= targetCount; i++) {
     tasks.push({
       groupId,
@@ -61,9 +80,12 @@ const createGroupTasks = async (groupId: string, type: string, targetCount: numb
     });
   }
   
-  await prisma.task.createMany({
-    data: tasks,
-  });
+  // Batch insert for performance
+  if (tasks.length > 0) {
+    await prisma.task.createMany({
+      data: tasks,
+    });
+  }
 };
 
 /**

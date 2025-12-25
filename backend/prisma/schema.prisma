@@ -24,6 +24,7 @@ model User {
   prayerTrackings   PrayerTracking[]
   refreshTokens     RefreshToken[]
   assignedTasks     Task[]                  @relation("TaskAssignee")
+  numberedTaskAssignments NumberedTaskAssignment[] @relation("NumberedTaskAssignee")
 
   @@map("users")
 }
@@ -61,6 +62,7 @@ model Group {
   members         GroupMember[]
   creator         User          @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   tasks           Task[]
+  numberedTaskAssignments NumberedTaskAssignment[]
 
   @@map("groups")
 }
@@ -93,6 +95,24 @@ model Task {
 
   @@unique([groupId, taskIndex])
   @@map("tasks")
+}
+
+// For numbered tasks (tefriciye, 1000_ihlas) - tracks user progress without creating individual tasks
+model NumberedTaskAssignment {
+  id            String   @id @default(cuid())
+  groupId       String
+  userId        String
+  assignedCount Int      @default(0)  // How many items user committed to complete
+  completedCount Int     @default(0)  // How many items user actually completed
+  assignedAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation("NumberedTaskAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("numbered_task_assignments")
 }
 
 model NotificationPreference {
