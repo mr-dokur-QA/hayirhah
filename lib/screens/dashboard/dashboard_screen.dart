@@ -43,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text(
           'Hayırhah',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
         ),

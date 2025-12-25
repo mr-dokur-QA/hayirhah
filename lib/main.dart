@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth/login_screen.dart';
 import 'services/theme_service.dart';
 import 'services/storage_service.dart';
+import 'core/network/connectivity_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,7 @@ void main() async {
   await Future.wait([
     initializeDateFormatting('tr_TR', null),
     StorageService.initialize(), // PERFORMANCE: Cache SharedPreferences instance
+    ConnectivityService.instance.initialize(), // PERFORMANCE: Monitor network connectivity
   ]);
   
   runApp(const DuaKardeslikApp());

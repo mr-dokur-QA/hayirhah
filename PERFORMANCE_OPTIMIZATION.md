@@ -22,9 +22,9 @@
 
 | ID | Task | Status | Impact |
 |----|------|--------|--------|
-| 2.1 | Replace `http` package with `dio` for interceptors & caching | ⬜ TODO | High |
+| 2.1 | Replace `http` package with `dio` for interceptors & caching | ✅ DONE | High |
 | 2.2 | Implement response caching for prayer times API (cache daily) | ✅ DONE | High |
-| 2.3 | Add proper request timeout handling | ⬜ TODO | Medium |
+| 2.3 | Add proper request timeout handling | ✅ DONE | Medium |
 | 2.4 | Implement connection pooling and reuse | ⬜ TODO | Medium |
 
 ### 3. Offline-First Architecture
@@ -33,7 +33,7 @@
 |----|------|--------|--------|
 | 3.1 | Cache prayer times locally with expiration | ✅ DONE | High |
 | 3.2 | Implement sync queue for offline actions | ⬜ TODO | High (for backend) |
-| 3.3 | Add connectivity listener for online/offline state | ⬜ TODO | Medium |
+| 3.3 | Add connectivity listener for online/offline state | ✅ DONE | Medium |
 | 3.4 | Cache location data and reuse when GPS unavailable | ✅ DONE | Medium |
 
 ---
@@ -46,7 +46,7 @@
 |----|------|--------|--------|
 | 4.1 | Add `const` constructors to all stateless widgets | ✅ DONE | Medium |
 | 4.2 | Add `const` to widget constructors and literals | ✅ DONE | Medium |
-| 4.3 | Use `RepaintBoundary` for compass/animation widgets | ⬜ TODO | Medium |
+| 4.3 | Use `RepaintBoundary` for compass/animation widgets | ✅ DONE | Medium |
 | 4.4 | Extract frequently rebuilt widgets to separate classes | ⬜ TODO | Medium |
 
 ### 5. List/Grid Optimization
@@ -112,7 +112,7 @@
 | ID | Task | Status | Impact |
 |----|------|--------|--------|
 | 11.1 | Implement JWT token refresh logic with interceptors | ⬜ TODO | High |
-| 11.2 | Add request retry with exponential backoff | ⬜ TODO | Medium |
+| 11.2 | Add request retry with exponential backoff | ✅ DONE | Medium |
 | 11.3 | Implement optimistic UI updates for better UX | ⬜ TODO | Medium |
 | 11.4 | Add GraphQL or batch endpoints to reduce API calls | ⬜ TODO | Medium |
 | 11.5 | Implement WebSocket for real-time group updates | ⬜ TODO | Medium |
@@ -185,11 +185,11 @@ These can be done quickly with high impact:
 ### Summary
 | Priority | Total | Done | In Progress | Remaining |
 |----------|-------|------|-------------|-----------|
-| 🔴 High | 12 | 3 | 0 | 9 |
-| 🟠 Medium | 16 | 4 | 0 | 12 |
+| 🔴 High | 12 | 5 | 0 | 7 |
+| 🟠 Medium | 16 | 7 | 0 | 9 |
 | 🟡 Low | 9 | 0 | 0 | 9 |
-| 🔵 Backend | 8 | 0 | 0 | 8 |
-| **Total** | **45** | **7** | **0** | **38** |
+| 🔵 Backend | 8 | 1 | 0 | 7 |
+| **Total** | **45** | **13** | **0** | **32** |
 
 ---
 
@@ -225,5 +225,5 @@ These can be done quickly with high impact:
 
 ---
 
-*Last Updated: December 24, 2025 - SharedPreferences, Prayer Cache & const constructors implemented*
+*Last Updated: December 24, 2025 - Dio client, ConnectivityService, retry logic, timeout handling implemented*
 

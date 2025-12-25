@@ -419,69 +419,75 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen>
             
             const SizedBox(height: 40),
             
-            // Modern pusula
-            Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.1),
-                    Colors.white.withOpacity(0.05),
-                    Colors.transparent,
+            // Modern pusula - RepaintBoundary ile sarılı (performans optimizasyonu)
+            RepaintBoundary(
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.1),
+                      Colors.white.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.7, 1.0],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      spreadRadius: 10,
+                      blurRadius: 30,
+                    ),
                   ],
-                  stops: const [0.0, 0.7, 1.0],
                 ),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    spreadRadius: 10,
-                    blurRadius: 30,
-                  ),
-                ],
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Pusula yönleri
-                  Transform.rotate(
-                    angle: _degreesToRadians(-_heading!),
-                    child: _buildCompassDirections(),
-                  ),
-                  
-                  // Kıble yönü göstergesi
-                  Transform.rotate(
-                    angle: _degreesToRadians(qiblaAngle),
-                    child: _buildQiblaIndicator(),
-                  ),
-                  
-                  // Merkez
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          const Color(0xFF00D4AA),
-                          const Color(0xFF00D4AA).withOpacity(0.7),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Pusula yönleri - RepaintBoundary ile izole
+                    RepaintBoundary(
+                      child: Transform.rotate(
+                        angle: _degreesToRadians(-_heading!),
+                        child: _buildCompassDirections(),
+                      ),
+                    ),
+                    
+                    // Kıble yönü göstergesi - RepaintBoundary ile izole
+                    RepaintBoundary(
+                      child: Transform.rotate(
+                        angle: _degreesToRadians(qiblaAngle),
+                        child: _buildQiblaIndicator(),
+                      ),
+                    ),
+                    
+                    // Merkez
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF00D4AA),
+                            const Color(0xFF00D4AA).withOpacity(0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00D4AA).withOpacity(0.5),
+                            spreadRadius: 3,
+                            blurRadius: 10,
+                          ),
                         ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF00D4AA).withOpacity(0.5),
-                          spreadRadius: 3,
-                          blurRadius: 10,
-                        ),
-                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             

@@ -6,6 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import audio_session
+import connectivity_plus
 import geolocator_apple
 import google_sign_in_ios
 import just_audio
@@ -15,6 +16,7 @@ import shared_preferences_foundation
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AudioSessionPlugin.register(with: registry.registrar(forPlugin: "AudioSessionPlugin"))
+  ConnectivityPlugin.register(with: registry.registrar(forPlugin: "ConnectivityPlugin"))
   GeolocatorPlugin.register(with: registry.registrar(forPlugin: "GeolocatorPlugin"))
   FLTGoogleSignInPlugin.register(with: registry.registrar(forPlugin: "FLTGoogleSignInPlugin"))
   JustAudioPlugin.register(with: registry.registrar(forPlugin: "JustAudioPlugin"))
