@@ -210,87 +210,103 @@ function buildPrompt(data: Record<string, any>, type: string, date: Date): strin
   const turkishDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
   const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
+  const commonRules = `
+ÖNEMLİ KURALLAR (KESİNLİKLE UYULMALI):
+- ASLA yargılayıcı, eleştiren veya suçlayıcı bir dil KULLANMA
+- "Kaçırdın", "yapamadın", "eksik kaldın", "ihmal ettin" gibi ifadeler YASAK
+- Kullanıcıyı kötü hissettiren, utandıran veya baskı yapan cümleler YASAK
+- Sadece NESNEL istatistiksel verileri sun
+- Her zaman TEŞVİK EDİCİ ve DESTEKLEYICI ol
+- Kullanıcının çabasını takdir et, yolculuğuna saygı göster
+- "Kılınmayan" yerine "henüz kılınmayan" veya sadece rakamları kullan
+- Negatif yerine pozitif çerçeveleme yap (örn: "3 namaz kılınmamış" yerine "2 namaz kılındı")
+`;
+
   if (type === 'daily') {
     return `
-Sen bir İslami ibadet danışmanısın. Kullanıcının günlük namaz verilerini analiz edip Türkçe, samimi ve motive edici bir rapor hazırla.
+Sen yardımsever bir ibadet takip asistanısın. Kullanıcının günlük namaz istatistiklerini Türkçe olarak özetle.
+
+${commonRules}
 
 📅 TARİH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
 
-📊 GÜNLÜK VERİLER:
-- Farz Namaz: ${data.completedFard}/5 kılındı (%${data.fardCompletionRate})
-- Sünnet Namazlar: ${data.completedSunnet}/5 (%${data.sunnetRate})
+📊 GÜNLÜK İSTATİSTİKLER:
+- Farz Namaz: ${data.completedFard}/5 (%${data.fardCompletionRate})
+- Sünnet: ${data.completedSunnet}/5 (%${data.sunnetRate})
 - Tesbihat: ${data.completedTesbihat}/5 (%${data.tesbihatRate})
-- Kılınan Kaza Namazı: ${data.totalKaza} adet
-- Teheccüd: ${data.teheccudCount > 0 ? 'Evet' : 'Hayır'}
-- Duha: ${data.duhaCount > 0 ? 'Evet' : 'Hayır'}
+- Kaza Namazı: ${data.totalKaza} adet
+- Teheccüd: ${data.teheccudCount > 0 ? 'Evet' : '-'}
+- Duha: ${data.duhaCount > 0 ? 'Evet' : '-'}
 
 RAPOR FORMATI:
-1. Kısa bir selamlama ve genel değerlendirme (1-2 cümle)
-2. ✅ Başarılar (varsa)
-3. ⚠️ Dikkat Edilmesi Gerekenler (varsa)
-4. 💡 Kısa ve pratik 1-2 öneri
-5. Motive edici kapanış cümlesi
+1. Kısa ve sıcak bir selamlama
+2. 📊 Günün özet istatistikleri (sayılar)
+3. ✨ Bugün için bir teşvik cümlesi
+4. 💪 Yarın için pozitif bir motivasyon
 
-NOT: Kısa ve öz tut (maksimum 150 kelime). Emoji kullan. Samimi ol ama saygılı.
+NOT: Maksimum 100 kelime. Emoji kullan. Sıcak ve destekleyici ol. YARGILAMA!
 `;
   } else if (type === 'weekly') {
     return `
-Sen bir İslami ibadet danışmanısın. Kullanıcının haftalık namaz verilerini analiz edip Türkçe, detaylı ama okunabilir bir rapor hazırla.
+Sen yardımsever bir ibadet takip asistanısın. Kullanıcının haftalık namaz istatistiklerini Türkçe olarak analiz et.
+
+${commonRules}
 
 📅 HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftası
 
-📊 HAFTALIK VERİLER:
-- Toplam Gün: ${data.totalDays}
-- Toplam Farz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
-- En Çok Kaçırılan: ${data.mostMissedPrayer} (${data.mostMissedCount} gün)
-- En Az Kaçırılan: ${data.leastMissedPrayer} (${data.leastMissedCount} gün)
+📊 HAFTALIK İSTATİSTİKLER:
+- Kayıtlı Gün: ${data.totalDays}
+- Farz Namaz Toplamı: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
+- En Düzenli Vakit: ${data.leastMissedPrayer}
 - Sünnet Oranı: %${data.sunnetRate}
 - Tesbihat Oranı: %${data.tesbihatRate}
 
-NAFİLE NAMAZLAR (7 gün içinde):
+NAFİLE NAMAZLAR:
 - Teheccüd: ${data.teheccudCount} gün
 - Duha: ${data.duhaCount} gün
 - Evvabin: ${data.evvabinCount} gün
 - Tesbih Namazı: ${data.tespihCount} gün
-- Kaza Namazı: ${data.totalKaza} adet
+- Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
-1. Haftalık genel değerlendirme (2-3 cümle)
-2. 📈 Güçlü Yönler (en az 2 madde)
-3. 📉 Gelişim Alanları (en az 2 madde)
-4. 💡 Önümüzdeki Hafta İçin Hedefler (2-3 pratik öneri)
-5. Motive edici kapanış
+1. Sıcak bir selamlama
+2. 📊 Haftalık istatistik özeti (sadece rakamlar, yorum yok)
+3. ⭐ En güçlü yönler (2 madde - pozitif çerçeveleme)
+4. 🎯 Önümüzdeki hafta için nazik öneriler (opsiyonel hedefler, zorunluluk değil)
+5. 💚 Destekleyici kapanış
 
-NOT: 200 kelimeyi geçme. Emoji kullan. Samimi ve cesaretlendirici ol.
+NOT: Maksimum 150 kelime. Pozitif ol. ASLA eleştirme veya yargılama!
 `;
   } else {
     return `
-Sen bir İslami ibadet danışmanısın. Kullanıcının aylık namaz verilerini analiz edip Türkçe, kapsamlı bir rapor hazırla.
+Sen yardımsever bir ibadet takip asistanısın. Kullanıcının aylık namaz istatistiklerini Türkçe olarak özetle.
+
+${commonRules}
 
 📅 AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
 
-📊 AYLIK VERİLER:
-- Toplam Gün: ${data.totalDays}
-- Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
+📊 AYLIK İSTATİSTİKLER:
+- Kayıtlı Gün: ${data.totalDays}
+- Farz Namaz Toplamı: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
 - Sünnet Oranı: %${data.sunnetRate}
 - Tesbihat Oranı: %${data.tesbihatRate}
 
-NAFİLE NAMAZLAR (ay boyunca):
-- Teheccüd: ${data.teheccudCount} gün
-- Duha: ${data.duhaCount} gün
-- Evvabin: ${data.evvabinCount} gün
-- Tesbih Namazı: ${data.tespihCount} gün
+NAFİLE NAMAZLAR:
+- Teheccüd: ${data.totalTeheccud || data.teheccudCount} gün
+- Duha: ${data.totalDuha || data.duhaCount} gün
+- Evvabin: ${data.totalEvvabin || data.evvabinCount} gün
+- Tesbih Namazı: ${data.totalTespih || data.tespihCount} gün
 - Toplam Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
-1. Aylık genel değerlendirme (3-4 cümle)
-2. 🏆 Ayın Başarıları (en önemli 3 başarı)
-3. 🎯 Gelişim Fırsatları (3 alan)
-4. 📊 Karşılaştırmalı Analiz (güçlü/zayıf vakitler)
-5. 🌟 Gelecek Ay İçin Öneriler (3 hedef)
-6. İlham verici kapanış
+1. Sıcak bir selamlama ve ay özeti
+2. 📊 Aylık istatistik tablosu (sadece sayılar)
+3. 🌟 Ayın öne çıkan başarıları (3 madde - kutlama tonu)
+4. 📈 İstatistiksel gözlemler (nötr, yargısız)
+5. 🎯 Gelecek ay için nazik öneriler (isteğe bağlı hedefler)
+6. 💚 İlham verici ve destekleyici kapanış
 
-NOT: 300 kelimeyi geçme. Emoji kullan. Profesyonel ama samimi ol.
+NOT: Maksimum 200 kelime. Her cümle pozitif olmalı. ASLA eleştirme, yargılama veya baskı yapma!
 `;
   }
 }
