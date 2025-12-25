@@ -5,10 +5,18 @@ import { z } from 'zod';
 // Task status types
 const TASK_STATUSES = ['available', 'assigned', 'completed'] as const;
 
+// Numbered (counter) group types - no per-item tasks
+const NUMBERED_TYPES = ['tefriciye', 'fetih', '1000_ihlas', 'custom_sayi'] as const;
+
 // Validation schemas
-const assignTaskSchema = z.object({
-  taskId: z.string().min(1, 'Task ID is required'),
-});
+const assignTaskSchema = z.union([
+  z.object({
+    taskId: z.string().min(1, 'Task ID is required'),
+  }),
+  z.object({
+    amount: z.number().min(1, 'Amount must be at least 1'),
+  }),
+]);
 
 const completeTaskSchema = z.object({
   taskId: z.string().min(1, 'Task ID is required'),
@@ -57,6 +65,55 @@ export const getGroupTasks = async (req: Request, res: Response): Promise<void> 
       res.status(403).json({
         error: 'Access denied',
         message: 'You are not a member of this group',
+      });
+      return;
+    }
+
+    // Check group type for numbered assignments
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { id: true, type: true, targetCount: true },
+    });
+
+    if (!group) {
+      res.status(404).json({
+        error: 'Group not found',
+        message: 'The requested group does not exist',
+      });
+      return;
+    }
+
+    // For numbered groups, return numbered task assignments as task-like objects
+    if (NUMBERED_TYPES.includes(group.type as any)) {
+      const assignments = await prisma.numberedTaskAssignment.findMany({
+        where: { groupId },
+        include: {
+          user: { select: { id: true, username: true } },
+        },
+        orderBy: [{ assignedAt: 'asc' }],
+      });
+
+      const data = assignments.map((a, idx) => ({
+        id: a.id,
+        groupId: a.groupId,
+        taskIndex: idx + 1,
+        assignedTo: a.userId,
+        status: a.completedCount >= a.assignedCount ? 'completed' : 'assigned',
+        amount: a.assignedCount,
+        assignedAt: a.assignedAt,
+        completedAt: a.completedCount >= a.assignedCount ? a.updatedAt : null,
+        assignee: a.user,
+      }));
+
+      res.status(200).json({
+        message: 'Group tasks retrieved successfully',
+        data,
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: data.length,
+          itemsPerPage: data.length,
+        },
       });
       return;
     }
@@ -151,7 +208,8 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const { taskId } = validation.data;
+    // For numbered groups we expect { amount }, for sectioned groups { taskId }
+    const body: any = validation.data;
 
     // Check if user is a member of the group
     const membership = await prisma.groupMember.findUnique({
@@ -167,6 +225,88 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
       res.status(403).json({
         error: 'Access denied',
         message: 'You are not a member of this group',
+      });
+      return;
+    }
+
+    // Check group type
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { id: true, type: true, targetCount: true, isActive: true },
+    });
+
+    if (!group) {
+      res.status(404).json({
+        error: 'Group not found',
+        message: 'The requested group does not exist',
+      });
+      return;
+    }
+
+    if (!group.isActive) {
+      res.status(400).json({
+        error: 'Group inactive',
+        message: 'This group is no longer active',
+      });
+      return;
+    }
+
+    if (NUMBERED_TYPES.includes(group.type as any)) {
+      const amount = body.amount as number | undefined;
+      if (!amount || amount < 1) {
+        res.status(400).json({
+          error: 'Validation failed',
+          message: 'Amount is required for numbered groups',
+        });
+        return;
+      }
+
+      // Remaining = targetCount - total committed assignedCount
+      const totals = await prisma.numberedTaskAssignment.aggregate({
+        where: { groupId },
+        _sum: { assignedCount: true },
+      });
+      const committed = totals._sum.assignedCount ?? 0;
+      const remaining = group.targetCount - committed;
+
+      if (amount > remaining) {
+        res.status(400).json({
+          error: 'Not enough remaining',
+          message: `Remaining count is ${remaining}`,
+        });
+        return;
+      }
+
+      const assignment = await prisma.numberedTaskAssignment.upsert({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: req.user.userId,
+          },
+        },
+        update: {
+          assignedCount: { increment: amount },
+        },
+        create: {
+          groupId,
+          userId: req.user.userId,
+          assignedCount: amount,
+          completedCount: 0,
+        },
+      });
+
+      res.status(200).json({
+        message: 'Numbered task assigned successfully',
+        data: assignment,
+      });
+      return;
+    }
+
+    const taskId = body.taskId as string | undefined;
+    if (!taskId) {
+      res.status(400).json({
+        error: 'Validation failed',
+        message: 'Task ID is required',
       });
       return;
     }
@@ -275,7 +415,68 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { taskId } = validation.data;
+    const { taskId } = validation.data as any;
+
+    // Check group type first
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { id: true, type: true, targetCount: true },
+    });
+
+    if (!group) {
+      res.status(404).json({
+        error: 'Group not found',
+        message: 'The requested group does not exist',
+      });
+      return;
+    }
+
+    if (NUMBERED_TYPES.includes(group.type as any)) {
+      // taskId is NumberedTaskAssignment.id
+      const assignment = await prisma.numberedTaskAssignment.findUnique({
+        where: { id: taskId },
+      });
+
+      if (!assignment || assignment.groupId !== groupId) {
+        res.status(404).json({
+          error: 'Assignment not found',
+          message: 'The requested assignment does not exist',
+        });
+        return;
+      }
+
+      if (assignment.userId !== req.user.userId) {
+        res.status(403).json({
+          error: 'Access denied',
+          message: 'You can only complete your own assignments',
+        });
+        return;
+      }
+
+      const updatedAssignment = await prisma.numberedTaskAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          completedCount: assignment.assignedCount,
+        },
+      });
+
+      const totals = await prisma.numberedTaskAssignment.aggregate({
+        where: { groupId },
+        _sum: { completedCount: true },
+      });
+      const completed = totals._sum.completedCount ?? 0;
+
+      await prisma.group.update({
+        where: { id: groupId },
+        data: { currentProgress: completed },
+      });
+
+      res.status(200).json({
+        message: 'Numbered assignment completed successfully',
+        data: updatedAssignment,
+      });
+      return;
+    }
 
     // Get the task
     const task = await prisma.task.findUnique({

@@ -36,10 +36,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     _loadGroupData();
   }
 
-  Future<void> _loadGroupData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadGroupData({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       _currentUser = _storageService.currentUser;
@@ -172,6 +174,18 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       return;
     }
 
+    // Optimistic UI update for hatim/cevsen tasks to avoid "refresh" feeling
+    setState(() {
+      final idx = _tasks.indexWhere((t) => t.id == task.id);
+      if (idx != -1) {
+        _tasks[idx] = _tasks[idx].copyWith(
+          assignedTo: _currentUser!.id,
+          status: 'assigned',
+          assignedAt: DateTime.now(),
+        );
+      }
+    });
+
     try {
       // Try API first, fallback to local storage
       final connectivity = ConnectivityService.instance;
@@ -180,7 +194,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         try {
           final result = await _apiService.assignTask(_group!.id, task.id);
           if (result != null) {
-            await _loadGroupData();
+            await _loadGroupData(showLoader: false);
             return;
           }
         } catch (apiError) {
@@ -191,10 +205,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       // Fallback to local storage
       final updatedTask = await _storageService.assignTask(task.id);
       if (updatedTask != null) {
-        await _loadGroupData();
-        // Artık snackbar göstermiyoruz, dialog yeterli
+        await _loadGroupData(showLoader: false);
+        return;
       }
+
+      // If both failed, revert by reloading silently
+      await _loadGroupData(showLoader: false);
     } catch (e) {
+      await _loadGroupData(showLoader: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Görev alınırken hata: $e')),
       );
@@ -271,6 +289,26 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     if (_currentUser == null) return;
 
     try {
+      final connectivity = ConnectivityService.instance;
+
+      if (connectivity.isOnline) {
+        try {
+          final result = await _apiService.assignNumberedTask(widget.groupId, amount);
+          if (result != null) {
+            await _loadGroupData(showLoader: false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$amount ${_getTaskTypeName().toLowerCase()} göreviniz alındı!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            return;
+          }
+        } catch (apiError) {
+          print('API numbered task assignment failed, using local storage: $apiError');
+        }
+      }
+
       final task = await _storageService.createDynamicTask(
         groupId: widget.groupId,
         userId: _currentUser!.id,
@@ -278,7 +316,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
       
       if (task != null) {
-        await _loadGroupData();
+        await _loadGroupData(showLoader: false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$amount ${_getTaskTypeName().toLowerCase()} göreviniz alındı!'),
@@ -348,7 +386,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         try {
           final result = await _apiService.completeTask(_group!.id, task.id);
           if (result != null) {
-            await _loadGroupData();
+            await _loadGroupData(showLoader: false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('${_getTaskName(task)} tamamlandı! Allah kabul etsin.'),
@@ -365,7 +403,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       // Fallback to local storage
       final updatedTask = await _storageService.completeTask(task.id);
       if (updatedTask != null) {
-        await _loadGroupData();
+        await _loadGroupData(showLoader: false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${_getTaskName(task)} tamamlandı! Allah kabul etsin.'),

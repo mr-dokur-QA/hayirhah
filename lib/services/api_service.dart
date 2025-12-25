@@ -227,6 +227,24 @@ class ApiService {
     }
   }
 
+  /// Assign a numbered task (tefriciye, fetih, 1000_ihlas etc.)
+  Future<Map<String, dynamic>?> assignNumberedTask(String groupId, int amount) async {
+    try {
+      final response = await _client.post(
+        '$_groups/$groupId/tasks/assign',
+        data: {'amount': amount},
+      );
+
+      if (response.statusCode == 200) {
+        return response.data;
+      }
+      return null;
+    } on DioException catch (e) {
+      _handleError('Assign numbered task', e);
+      return null;
+    }
+  }
+
   /// Complete a task
   Future<Map<String, dynamic>?> completeTask(String groupId, String taskId) async {
     try {
