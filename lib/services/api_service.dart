@@ -8,6 +8,7 @@ class ApiService {
   final DioClient _client = DioClient();
 
   // Endpoints
+  static const String _authRegister = '/auth/register';
   static const String _authLogin = '/auth/login';
   static const String _authProfile = '/auth/profile';
   static const String _groups = '/groups';
@@ -26,6 +27,37 @@ class ApiService {
 
   // ==================== Authentication ====================
 
+  /// Register a new user
+  Future<Map<String, dynamic>?> register({
+    required String email,
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final response = await _client.post(
+        _authRegister,
+        data: {
+          'email': email,
+          'username': username,
+          'password': password,
+        },
+      );
+
+      if (response.statusCode == 201) {
+        final data = response.data;
+        final token = data['tokens']?['accessToken'];
+        if (token != null) {
+          _client.setAuthToken(token);
+        }
+        return data;
+      }
+      return null;
+    } on DioException catch (e) {
+      _handleError('Register', e);
+      return null;
+    }
+  }
+
   /// Login with email and password
   Future<Map<String, dynamic>?> login({
     required String email,
@@ -42,7 +74,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final token = data['data']?['tokens']?['accessToken'];
+        // Backend returns tokens directly or in data.tokens
+        final token = data['tokens']?['accessToken'] ?? data['data']?['tokens']?['accessToken'];
         if (token != null) {
           _client.setAuthToken(token);
         }

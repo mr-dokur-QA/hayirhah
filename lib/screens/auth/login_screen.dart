@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _apiService = ApiService();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isRegisterMode = false;
 
   @override
   void dispose() {
@@ -42,16 +43,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result != null && mounted) {
         // Login successful
+        final userData = result['user'] ?? result['data']?['user'];
+        final username = userData?['username'] ?? 'Kullanıcı';
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
         );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Hoşgeldiniz ${result['user']['username']}!'),
+            content: Text('Hoşgeldiniz $username!'),
             backgroundColor: Colors.green,
           ),
         );
+        return; // Exit early on success
       } else {
         // Fallback to local storage (demo mode)
         print('Backend login failed, trying local demo mode...');
@@ -110,6 +114,61 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Giriş hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Register via backend API
+      final result = await _apiService.register(
+        email: _emailController.text.trim(),
+        username: _emailController.text.trim().split('@')[0], // Use email prefix as username
+        password: _passwordController.text,
+      );
+
+      if (result != null && mounted) {
+        final userData = result['user'] ?? result['data']?['user'];
+        final username = userData?['username'] ?? 'Kullanıcı';
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kayıt başarılı! Hoşgeldiniz $username!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kayıt başarısız oldu. Lütfen tekrar deneyin.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Register error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kayıt hatası: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -229,15 +288,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Login button
+                // Login/Register button
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: _isLoading ? null : (_isRegisterMode ? _register : _login),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator()
-                      : const Text('Giriş Yap'),
+                      : Text(_isRegisterMode ? 'Kayıt Ol' : 'Giriş Yap'),
+                ),
+                const SizedBox(height: 16),
+
+                // Toggle between login and register
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isRegisterMode = !_isRegisterMode;
+                    });
+                  },
+                  child: Text(
+                    _isRegisterMode
+                        ? 'Zaten hesabınız var mı? Giriş yapın'
+                        : 'Hesabınız yok mu? Kayıt olun',
+                    style: TextStyle(
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
 
