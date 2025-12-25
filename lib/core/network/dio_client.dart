@@ -21,9 +21,16 @@ class DioClient {
   // Factory constructor
   factory DioClient() => instance;
 
-  // Base configuration - shorter timeouts when backend is not available
+  // Production API URL
+  static const String _productionUrl = 'https://hayirhah-production.up.railway.app/api';
+  static const String _developmentUrl = 'http://localhost:3000/api';
+  
+  // Set to true for production, false for local development
+  static const bool isProduction = true;
+
+  // Base configuration
   static BaseOptions get _baseOptions => BaseOptions(
-        baseUrl: 'http://localhost:3000/api',
+        baseUrl: isProduction ? _productionUrl : _developmentUrl,
         connectTimeout: const Duration(seconds: 5), // Reduced from 15s
         receiveTimeout: const Duration(seconds: 10),
         sendTimeout: const Duration(seconds: 5),
