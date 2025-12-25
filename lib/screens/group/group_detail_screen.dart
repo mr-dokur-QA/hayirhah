@@ -80,11 +80,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             final tasksData = apiTasks;
 
             final members = (groupData['members'] as List?) ?? const [];
-            final participantIds = members
-                .map((m) => (m is Map ? m['userId'] ?? m['user']?['id'] : null))
-                .where((id) => id != null)
-                .map((id) => id.toString())
-                .toList();
+            final participantIds = members.map<String?>((m) {
+              if (m is Map) {
+                final userId = m['userId'];
+                if (userId != null) return userId.toString();
+                final user = m['user'];
+                if (user is Map && user['id'] != null) return user['id'].toString();
+              }
+              return null;
+            }).whereType<String>().toList();
 
             final group = Group(
               id: groupData['id'],

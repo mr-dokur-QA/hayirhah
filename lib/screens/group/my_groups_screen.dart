@@ -63,11 +63,15 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                 return List<String>.from(groupData['participantIds']);
               }
               final members = (groupData['members'] as List?) ?? const [];
-              final ids = members
-                  .map((m) => (m is Map ? m['userId'] ?? m['user']?['id'] : null))
-                  .where((id) => id != null)
-                  .map((id) => id.toString())
-                  .toList();
+              final ids = members.map<String?>((m) {
+                if (m is Map) {
+                  final userId = m['userId'];
+                  if (userId != null) return userId.toString();
+                  final user = m['user'];
+                  if (user is Map && user['id'] != null) return user['id'].toString();
+                }
+                return null;
+              }).whereType<String>().toList();
               if (ids.isNotEmpty) return ids;
               if (groupData['creatorId'] != null && groupData['creatorId'].toString().isNotEmpty) {
                 return [groupData['creatorId'].toString()];
