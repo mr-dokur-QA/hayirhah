@@ -63,32 +63,6 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       // Set auth token for API calls
       _apiService.setAuthToken(token);
 
-      // Test token validity by calling a simple API endpoint
-      try {
-        print('Testing token validity for group details...');
-        final connectionStatus = await _apiService.getConnectionStatus();
-        if (connectionStatus != 'connected') {
-          throw Exception('Connection failed');
-        }
-        print('Token is valid');
-      } catch (e) {
-        print('Token validation failed: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          // Clear invalid tokens
-          await _storageService.clearAuthTokens();
-          _apiService.clearAuthToken();
-          // Navigate to login screen
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-        return;
-      }
-
       // PERFORMANCE: Skip API call if offline - use local storage directly
       final connectivity = ConnectivityService.instance;
 
@@ -170,8 +144,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         _isLoading = false;
       });
       if (mounted) {
+        String errorMessage = 'Veri yüklenirken hata: $e';
+
+        // Check for auth errors
+        if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+          errorMessage = 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.';
+          // Clear invalid tokens and navigate to login
+          await _storageService.clearAuthTokens();
+          _apiService.clearAuthToken();
+          Navigator.pushReplacementNamed(context, '/login');
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Veri yüklenirken hata: $e')),
+          SnackBar(content: Text(errorMessage)),
         );
       }
     }

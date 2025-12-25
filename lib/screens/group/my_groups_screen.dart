@@ -31,9 +31,15 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     });
 
     try {
+      // Set auth token for API calls
+      final token = await _storageService.getAuthToken();
+      if (token != null) {
+        _apiService.setAuthToken(token);
+      }
+
       // PERFORMANCE: Skip API call if offline - use local storage directly
       final connectivity = ConnectivityService.instance;
-      
+
       if (connectivity.isOnline) {
         // Try backend API first (with short timeout due to Dio config)
         final apiGroups = await _apiService.getUserGroups();
@@ -68,25 +74,44 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         _groups = groups;
         _isLoading = false;
       });
-    } catch (e) {
-      // Fallback to local storage on error
-      try {
-        final groups = await _storageService.getUserGroups();
-        setState(() {
-          _groups = groups;
-          _isLoading = false;
-        });
-      } catch (localError) {
-        setState(() {
-          _isLoading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Etkinlikler yüklenirken hata: $e')),
-          );
+      } catch (e) {
+        print('API call failed for user groups: $e');
+
+        // Check for auth errors
+        if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            // Clear invalid tokens and navigate to login
+            await _storageService.clearAuthTokens();
+            _apiService.clearAuthToken();
+            Navigator.pushReplacementNamed(context, '/login');
+            return;
+          }
+        }
+
+        // Fallback to local storage on error
+        try {
+          final groups = await _storageService.getUserGroups();
+          setState(() {
+            _groups = groups;
+            _isLoading = false;
+          });
+        } catch (localError) {
+          setState(() {
+            _isLoading = false;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Etkinlikler yüklenirken hata: $e')),
+            );
+          }
         }
       }
-    }
   }
 
   @override

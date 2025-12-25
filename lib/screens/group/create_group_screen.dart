@@ -127,33 +127,6 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     // Set auth token for API calls
     _apiService.setAuthToken(token);
 
-    // Test token validity by calling profile endpoint
-    try {
-      print('Testing token validity...');
-      final profile = await _apiService.getProfile();
-      if (profile == null) {
-        print('Token invalid - profile call failed');
-        throw Exception('Token expired');
-      }
-      print('Token is valid');
-    } catch (e) {
-      print('Token validation failed: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        // Clear invalid tokens
-        await _storageService.clearAuthTokens();
-        _apiService.clearAuthToken();
-        // Navigate to login screen
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
@@ -176,6 +149,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       if (connectivity.isOnline) {
         // Try backend API first
         try {
+          print('Creating group via API: $title, type: $_selectedTemplate');
           final result = await _apiService.createGroup(
             title: title,
             description: description,
@@ -184,6 +158,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             isPrivate: _isPrivate,
             deadline: _deadline?.toIso8601String(),
           );
+          print('API result: $result');
 
           if (result != null && mounted) {
             // Extract group data from response
@@ -219,6 +194,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               // Clear invalid tokens
               await _storageService.clearAuthTokens();
               _apiService.clearAuthToken();
+              // Navigate to login screen
+              Navigator.pushReplacementNamed(context, '/login');
+              return;
             } else if (e.toString().contains('400') || e.toString().contains('Bad Request')) {
               errorMessage = 'Geçersiz grup bilgileri. Lütfen kontrol edin.';
             } else if (e.toString().contains('Network') || e.toString().contains('timeout')) {
