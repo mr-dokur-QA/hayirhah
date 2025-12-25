@@ -407,4 +407,4 @@ erDiagram
 
 ---
 
-*Bu dosya, uygulama geliştirildikçe düzenli olarak güncellenecektir.* 
+*Bu dosya, uygulama geliştirildikçe düzenli olarak güncellenecektir..* 
