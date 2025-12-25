@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:flutter/material.dart';
 import 'notification_service.dart';
 import 'storage_service.dart';
+import 'location_service.dart';
 import '../models/notification_preferences.dart';
 
 class PrayerTime {
@@ -112,15 +113,16 @@ class PrayerTimesService extends ChangeNotifier {
         return;
       }
 
-      // Get current location (try cache first)
+      // Get current location (try manual city, then cache, then GPS)
       Position? position;
-      final cachedLocation = await _storageService.getCachedLocation();
+      final locationService = LocationService();
       
-      if (cachedLocation != null && !forceRefresh) {
-        // Use cached location
+      // Check for manual city selection first (user preference)
+      if (locationService.selectedCity != null) {
+        final city = locationService.selectedCity!;
         position = Position(
-          latitude: cachedLocation['latitude']!,
-          longitude: cachedLocation['longitude']!,
+          latitude: city.latitude,
+          longitude: city.longitude,
           timestamp: DateTime.now(),
           accuracy: 0,
           altitude: 0,
@@ -130,22 +132,45 @@ class PrayerTimesService extends ChangeNotifier {
           altitudeAccuracy: 0,
           headingAccuracy: 0,
         );
+        _cityName = city.name;
+        _countryName = 'Türkiye';
       } else {
-        // Get fresh location
-        position = await _getCurrentLocation();
-        if (position != null) {
-          // Cache the new location
-          await _storageService.saveLocation(position.latitude, position.longitude);
+        // Try cached location
+        final cachedLocation = await _storageService.getCachedLocation();
+        
+        if (cachedLocation != null && !forceRefresh) {
+          // Use cached location
+          position = Position(
+            latitude: cachedLocation['latitude']!,
+            longitude: cachedLocation['longitude']!,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+        } else {
+          // Get fresh GPS location
+          position = await _getCurrentLocation();
+          if (position != null) {
+            // Cache the new location
+            await _storageService.saveLocation(position.latitude, position.longitude);
+          }
         }
       }
 
       if (position == null) {
-        _error = 'Konum alınamadı. Lütfen konum izni verin.';
+        _error = 'Konum alınamadı. Lütfen konum izni verin veya Ayarlar\'dan şehir seçin.';
         return;
       }
 
-      // Get location name
-      await _getLocationName(position);
+      // Get location name (only if not using manual city)
+      if (locationService.selectedCity == null) {
+        await _getLocationName(position);
+      }
 
       // Fetch prayer times with retry logic
       final response = await _fetchPrayerTimesWithRetry(position);
@@ -353,10 +378,11 @@ class PrayerTimesService extends ChangeNotifier {
         return null;
       }
 
-      // Get current position with timeout
+      // PERFORMANCE: Use low accuracy first for faster response, then upgrade if needed
+      // Low accuracy uses network-based location (fast) instead of GPS (slow)
       return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
       );
     } catch (e) {
       print('Error getting location: $e');

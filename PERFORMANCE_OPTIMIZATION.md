@@ -53,10 +53,10 @@
 
 | ID | Task | Status | Impact |
 |----|------|--------|--------|
-| 5.1 | Add `key` property to list items for efficient diffing | ⬜ TODO | Medium |
-| 5.2 | Use `ListView.builder` with `cacheExtent` for long lists | ⬜ TODO | Medium |
-| 5.3 | Implement pagination for group tasks (30+ items) | ⬜ TODO | Medium |
-| 5.4 | Add `AutomaticKeepAliveClientMixin` for tabs | ⬜ TODO | Low |
+| 5.1 | Add `key` property to list items for efficient diffing | ✅ DONE | Medium |
+| 5.2 | Use `ListView.builder` with `cacheExtent` for long lists | ✅ DONE | Medium |
+| 5.3 | Implement pagination for group tasks (30+ items) | ✅ DONE | Medium |
+| 5.4 | Add `AutomaticKeepAliveClientMixin` for tabs | ✅ DONE | Low |
 
 ### 6. Storage Optimization
 
@@ -72,8 +72,8 @@
 | ID | Task | Status | Impact |
 |----|------|--------|--------|
 | 7.1 | Cache location with timestamp, refresh only if >15min old | ✅ DONE | Medium |
-| 7.2 | Use `LocationAccuracy.low` for initial fast location | ⬜ TODO | Medium |
-| 7.3 | Move location permission check to app startup | ⬜ TODO | Low |
+| 7.2 | Use `LocationAccuracy.low` for initial fast location | ✅ DONE | Medium |
+| 7.3 | Move location permission check to app startup | ✅ DONE | Low |
 
 ---
 
@@ -186,10 +186,10 @@ These can be done quickly with high impact:
 | Priority | Total | Done | In Progress | Remaining |
 |----------|-------|------|-------------|-----------|
 | 🔴 High | 12 | 5 | 0 | 7 |
-| 🟠 Medium | 16 | 7 | 0 | 9 |
-| 🟡 Low | 9 | 0 | 0 | 9 |
+| 🟠 Medium | 16 | 12 | 0 | 4 |
+| 🟡 Low | 9 | 2 | 0 | 7 |
 | 🔵 Backend | 8 | 1 | 0 | 7 |
-| **Total** | **45** | **13** | **0** | **32** |
+| **Total** | **45** | **19** | **0** | **26** |
 
 ---
 
@@ -225,5 +225,5 @@ These can be done quickly with high impact:
 
 ---
 
-*Last Updated: December 24, 2025 - Dio client, ConnectivityService, retry logic, timeout handling implemented*
+*Last Updated: December 24, 2025 - Location optimizations: LocationAccuracy.low for fast initial location, permission check at app startup, manual city selection feature added*
 

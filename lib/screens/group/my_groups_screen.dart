@@ -194,9 +194,15 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _groups.length,
+      // PERFORMANCE: cacheExtent improves scroll performance for long lists
+      cacheExtent: 300,
       itemBuilder: (context, index) {
         final group = _groups[index];
-        return _buildGroupCard(group);
+        // PERFORMANCE: ValueKey enables efficient widget diffing
+        return KeyedSubtree(
+          key: ValueKey(group.id),
+          child: _buildGroupCard(group),
+        );
       },
     );
   }

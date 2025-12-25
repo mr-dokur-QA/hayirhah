@@ -106,8 +106,11 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen>
         }
       }
 
+      // PERFORMANCE: Use low accuracy first for faster response (network-based)
+      // This is sufficient for Qibla direction calculation
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
       );
 
       // Şehir bilgisini al

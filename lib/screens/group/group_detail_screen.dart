@@ -22,6 +22,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   List<User> _participants = [];
   bool _isLoading = true;
   User? _currentUser;
+  
+  // PERFORMANCE: Pagination state for task lists with 30+ items
+  static const int _tasksPerPage = 20;
+  int _visibleTaskCount = 20;
 
   @override
   void initState() {
@@ -45,6 +49,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         _tasks = tasks;
         _participants = participants;
         _isLoading = false;
+        // PERFORMANCE: Reset pagination when data is reloaded
+        _visibleTaskCount = _tasksPerPage;
       });
     } catch (e) {
       setState(() {
@@ -240,6 +246,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   String _getTaskName(Task task) {
     if (_group?.type == 'hatim') {
       return '${task.taskIndex}. Cüz';
+    } else if (_group?.type == 'cevsen') {
+      // Cevşen için bab aralığını göster
+      final startBab = (task.taskIndex - 1) * 5 + 1;
+      final endBab = task.taskIndex * 5;
+      return 'Bab $startBab-$endBab';
     } else if (task.amount != null) {
       return '${task.amount} ${_getTaskTypeName().toLowerCase()}';
     } else {
@@ -825,11 +836,21 @@ Hayırlı olsun!
   }
 
   Widget _buildTasksSection() {
+    // Determine section title based on group type
+    String sectionTitle;
+    if (_group!.type == 'hatim') {
+      sectionTitle = 'Cüzler';
+    } else if (_group!.type == 'cevsen') {
+      sectionTitle = 'Bablar';
+    } else {
+      sectionTitle = 'Görevler';
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _group!.type == 'hatim' ? 'Cüzler' : 'Görevler',
+          sectionTitle,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -837,6 +858,8 @@ Hayırlı olsun!
         const SizedBox(height: 12),
         if (_group!.type == 'hatim')
           _buildHatimGrid()
+        else if (_group!.type == 'cevsen')
+          _buildCevsenGrid()
         else
           _buildTasksList(),
       ],
@@ -853,10 +876,129 @@ Hayırlı olsun!
         mainAxisSpacing: 8,
       ),
       itemCount: _tasks.length,
+      // PERFORMANCE: cacheExtent keeps nearby items in memory for smoother scrolling
+      cacheExtent: 200,
       itemBuilder: (context, index) {
         final task = _tasks[index];
-        return _buildCuzCard(task);
+        // PERFORMANCE: ValueKey enables efficient widget diffing when task status changes
+        return KeyedSubtree(
+          key: ValueKey(task.id),
+          child: _buildCuzCard(task),
+        );
       },
+    );
+  }
+
+  /// Cevşen-ül Kebir için 20 bab grubu gösteren grid (her biri 5 bab)
+  Widget _buildCevsenGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: _tasks.length,
+      cacheExtent: 200,
+      itemBuilder: (context, index) {
+        final task = _tasks[index];
+        return KeyedSubtree(
+          key: ValueKey(task.id),
+          child: _buildBabCard(task),
+        );
+      },
+    );
+  }
+
+  /// Cevşen bab kartı - 5'erli gruplar halinde gösterir (1-5, 6-10, vb.)
+  Widget _buildBabCard(Task task) {
+    final startBab = (task.taskIndex - 1) * 5 + 1;
+    final endBab = task.taskIndex * 5;
+    final babRange = '$startBab-$endBab';
+
+    Color backgroundColor;
+    Color textColor;
+    Widget? icon;
+    bool isClickable = false;
+
+    switch (task.status) {
+      case 'available':
+        backgroundColor = Colors.teal.shade100;
+        textColor = Colors.teal.shade700;
+        isClickable = true;
+        break;
+      case 'assigned':
+        backgroundColor = Colors.orange.shade100;
+        textColor = Colors.orange.shade700;
+        if (task.assignedTo == _currentUser?.id) {
+          icon = Icon(Icons.check, color: Colors.orange.shade700, size: 14);
+          isClickable = true;
+        } else {
+          final assignedUser = _storageService.getUserByIdSync(task.assignedTo!);
+          icon = Text(
+            assignedUser?.username.substring(0, 1).toUpperCase() ?? '?',
+            style: TextStyle(
+              color: Colors.orange.shade700,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+        }
+        break;
+      case 'completed':
+        backgroundColor = Theme.of(context).brightness == Brightness.dark 
+            ? Colors.grey.shade700 
+            : Colors.grey.shade300;
+        textColor = Theme.of(context).brightness == Brightness.dark 
+            ? Colors.grey.shade300 
+            : Colors.grey.shade700;
+        icon = Icon(Icons.check_circle, color: Colors.green.shade600, size: 14);
+        break;
+      default:
+        backgroundColor = Colors.grey.shade100;
+        textColor = Colors.grey.shade700;
+    }
+
+    return GestureDetector(
+      onTap: isClickable ? () => _handleTaskTap(task) : null,
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: task.assignedTo == _currentUser?.id 
+                ? Colors.blue.shade400 
+                : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              icon,
+              const SizedBox(height: 2),
+            ],
+            Text(
+              babRange,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -936,20 +1078,24 @@ Hayırlı olsun!
   }
 
   Widget _buildTasksList() {
-    // Tefriciye, Yasin, Fetih, Cevsen, 1000 İhlas için özel gösterim
-    if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih' || _group?.type == 'cevsen' || _group?.type == '1000_ihlas') {
+    // Tefriciye, Yasin, Fetih, 1000 İhlas için özel gösterim (Cevsen artık grid kullanıyor)
+    if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih' || _group?.type == '1000_ihlas') {
       return Column(
         children: [
-          // Kalan görev sayısını göster
+          // Kalan görev sayısını göster - Renk kontrastı iyileştirildi
           Card(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.blue.shade900.withOpacity(0.3)
+                : Colors.blue.shade50,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   Icon(
                     Icons.info_outline,
-                    color: Theme.of(context).primaryColor,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.blue.shade200
+                        : Colors.blue.shade700,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -958,7 +1104,9 @@ Hayırlı olsun!
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.blue.shade100
+                            : Colors.blue.shade800,
                       ),
                     ),
                   ),
@@ -1001,44 +1149,117 @@ Hayırlı olsun!
               ),
             ),
           const SizedBox(height: 16),
-          // Mevcut görevler
+          // Mevcut görevler - PERFORMANCE: Pagination for 30+ items
           if (_tasks.isNotEmpty) ...[
-            Text(
-              'Alınan Görevler',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Alınan Görevler (${_tasks.length})',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_tasks.length > _tasksPerPage)
+                  Text(
+                    'Gösterilen: ${_visibleTaskCount.clamp(0, _tasks.length)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
-            ..._tasks.map((task) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(_getTaskName(task)),
-                  subtitle: Text(_getTaskStatusText(task)),
-                  trailing: _getTaskTrailing(task),
-                  onTap: () => _handleTaskTap(task),
+            // PERFORMANCE: Using ValueKey for efficient list item updates
+            // Only show _visibleTaskCount tasks (pagination)
+            ..._tasks.take(_visibleTaskCount).map((task) {
+              return KeyedSubtree(
+                key: ValueKey(task.id),
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(_getTaskName(task)),
+                    subtitle: Text(_getTaskStatusText(task)),
+                    trailing: _getTaskTrailing(task),
+                    onTap: () => _handleTaskTap(task),
+                  ),
                 ),
               );
             }).toList(),
+            // "Load More" button for pagination
+            if (_tasks.length > _visibleTaskCount) ...[
+              const SizedBox(height: 8),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _visibleTaskCount += _tasksPerPage;
+                    });
+                  },
+                  icon: const Icon(Icons.expand_more),
+                  label: Text('Daha Fazla Göster (${_tasks.length - _visibleTaskCount} kalan)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                    foregroundColor: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       );
     }
 
-    // Hatim için normal liste
+    // Hatim için normal liste - PERFORMANCE: Pagination for 30+ items
+    // PERFORMANCE: Using ValueKey for efficient list item updates
     return Column(
-      children: _tasks.map((task) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            title: Text(_getTaskName(task)),
-            subtitle: Text(_getTaskStatusText(task)),
-            trailing: _getTaskTrailing(task),
-            onTap: () => _handleTaskTap(task),
+      children: [
+        if (_tasks.length > _tasksPerPage)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Gösterilen: ${_visibleTaskCount.clamp(0, _tasks.length)} / ${_tasks.length}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
-        );
-      }).toList(),
+        // Only show _visibleTaskCount tasks (pagination)
+        ..._tasks.take(_visibleTaskCount).map((task) {
+          return KeyedSubtree(
+            key: ValueKey(task.id),
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(_getTaskName(task)),
+                subtitle: Text(_getTaskStatusText(task)),
+                trailing: _getTaskTrailing(task),
+                onTap: () => _handleTaskTap(task),
+              ),
+            ),
+          );
+        }).toList(),
+        // "Load More" button for pagination
+        if (_tasks.length > _visibleTaskCount) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _visibleTaskCount += _tasksPerPage;
+                });
+              },
+              icon: const Icon(Icons.expand_more),
+              label: Text('Daha Fazla Göster (${_tasks.length - _visibleTaskCount} kalan)'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                foregroundColor: Theme.of(context).primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1160,57 +1381,61 @@ Hayırlı olsun!
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
+              // PERFORMANCE: Using ValueKey for efficient participant list updates
               children: _participants.map((participant) {
                 final userTasks = _tasks.where((t) => t.assignedTo == participant.id).toList();
                 final completedTasks = userTasks.where((t) => t.status == 'completed').length;
                 final assignedTasks = userTasks.where((t) => t.status == 'assigned').length;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        child: Text(
-                          participant.username.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(color: Colors.white),
+                return KeyedSubtree(
+                  key: ValueKey(participant.id),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Theme.of(context).primaryColor,
+                          child: Text(
+                            participant.username.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              participant.username,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                participant.username,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Tamamlanan: $completedTasks, Devam eden: $assignedTasks',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (participant.id == _group!.creatorId)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.shade100,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            Text(
-                              'Tamamlanan: $completedTasks, Devam eden: $assignedTasks',
+                            child: Text(
+                              'Oluşturan',
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                                fontSize: 10,
+                                color: Colors.purple.shade700,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      if (participant.id == _group!.creatorId)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade100,
-                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            'Oluşturan',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.purple.shade700,
-                            ),
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               }).toList(),

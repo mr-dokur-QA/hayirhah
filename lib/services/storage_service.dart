@@ -46,6 +46,7 @@ class StorageService {
   static const String _prayerTimesCacheKey = 'prayer_times_cache_timestamp';
   static const String _locationKey = 'location';
   static const String _locationCacheKey = 'location_cache_timestamp';
+  static const String _manualCityKey = 'manual_city';
 
   // Cache duration constants
   static const Duration prayerTimesCacheDuration = Duration(hours: 24);
@@ -221,6 +222,36 @@ class StorageService {
     return null;
   }
 
+  // Manual city selection methods (for users who don't want to share location)
+  Future<void> saveManualCity(dynamic city) async {
+    final prefs = await _sharedPrefs;
+    if (city == null) {
+      await prefs.remove(_manualCityKey);
+    } else {
+      await prefs.setString(_manualCityKey, jsonEncode(city.toMap()));
+    }
+  }
+
+  Future<void> clearManualCity() async {
+    final prefs = await _sharedPrefs;
+    await prefs.remove(_manualCityKey);
+  }
+
+  Future<dynamic> getManualCity() async {
+    final prefs = await _sharedPrefs;
+    final jsonString = prefs.getString(_manualCityKey);
+    if (jsonString != null) {
+      // Import dynamically to avoid circular dependency
+      final map = jsonDecode(jsonString) as Map<String, dynamic>;
+      return _TurkishCityData(
+        name: map['name'] ?? '',
+        latitude: (map['latitude'] as num).toDouble(),
+        longitude: (map['longitude'] as num).toDouble(),
+      );
+    }
+    return null;
+  }
+
   // Generate unique ID
   String _generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString() + 
@@ -372,6 +403,18 @@ class StorageService {
           id: _generateId(),
           groupId: group.id,
           taskIndex: i,
+        );
+        _tasks[task.id] = task;
+      }
+    } else if (group.type == 'cevsen') {
+      // Cevşen-ül Kebir: 100 bab, 20 görev (her biri 5 bab)
+      // 1-5, 6-10, 11-15, ... 96-100
+      for (int i = 1; i <= 20; i++) {
+        final task = Task(
+          id: _generateId(),
+          groupId: group.id,
+          taskIndex: i,
+          amount: 5, // Her görev 5 bab
         );
         _tasks[task.id] = task;
       }
@@ -573,4 +616,23 @@ class StorageService {
     
     return '${date.day} ${months[date.month - 1]}, ${date.year}';
   }
+}
+
+/// Simple data class for manual city (to avoid circular imports)
+class _TurkishCityData {
+  final String name;
+  final double latitude;
+  final double longitude;
+
+  _TurkishCityData({
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 } 

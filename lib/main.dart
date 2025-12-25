@@ -4,6 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/auth/login_screen.dart';
 import 'services/theme_service.dart';
 import 'services/storage_service.dart';
+import 'services/location_service.dart';
 import 'core/network/connectivity_service.dart';
 
 void main() async {
@@ -15,6 +16,10 @@ void main() async {
     StorageService.initialize(), // PERFORMANCE: Cache SharedPreferences instance
     ConnectivityService.instance.initialize(), // PERFORMANCE: Monitor network connectivity
   ]);
+  
+  // PERFORMANCE: Check location permission at startup (non-blocking)
+  // This pre-loads location state for faster subsequent requests
+  LocationService().initialize();
   
   runApp(const DuaKardeslikApp());
 }
