@@ -18,6 +18,7 @@ import { notFound } from './middleware/notFound';
 import authRoutes from './routes/auth';
 import prayerTrackingRoutes from './routes/prayerTracking';
 import groupRoutes from './routes/groups';
+import aiReportRoutes from './routes/aiReport';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -74,6 +75,7 @@ app.get('/health', async (_req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/prayer-tracking', prayerTrackingRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/ai-report', aiReportRoutes);
 
 // Error handling middleware
 app.use(notFound);

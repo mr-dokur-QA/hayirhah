@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/ai_report_service.dart';
-import '../../services/storage_service.dart';
 
 class AIReportScreen extends StatefulWidget {
   const AIReportScreen({Key? key}) : super(key: key);
@@ -12,7 +11,6 @@ class AIReportScreen extends StatefulWidget {
 
 class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProviderStateMixin {
   final AIReportService _aiService = AIReportService();
-  final StorageService _storageService = StorageService();
   late TabController _tabController;
   
   AIReport? _dailyReport;
@@ -22,46 +20,17 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
   bool _isLoadingDaily = false;
   bool _isLoadingWeekly = false;
   bool _isLoadingMonthly = false;
-  
-  final _apiKeyController = TextEditingController();
-  bool _showApiKeyField = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadApiKey();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _apiKeyController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadApiKey() async {
-    final savedKey = await _storageService.getGroqApiKey();
-    if (savedKey != null && savedKey.isNotEmpty) {
-      _aiService.setApiKey(savedKey);
-      _apiKeyController.text = savedKey;
-    }
-  }
-
-  Future<void> _saveApiKey(String key) async {
-    await _storageService.saveGroqApiKey(key);
-    _aiService.setApiKey(key);
-    setState(() {
-      _showApiKeyField = false;
-    });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('API anahtarı kaydedildi!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
   }
 
   Future<void> _generateDailyReport() async {
@@ -96,8 +65,6 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -109,15 +76,6 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
           ],
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.key),
-            tooltip: 'API Anahtarı',
-            onPressed: () {
-              setState(() => _showApiKeyField = !_showApiKeyField);
-            },
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -127,102 +85,32 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
           ],
         ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // API Key input field
-          if (_showApiKeyField)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: isDark ? Colors.grey[900] : Colors.grey[100],
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Groq API Anahtarı',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _apiKeyController,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            hintText: 'gsk_...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            isDense: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (_apiKeyController.text.isNotEmpty) {
-                            _saveApiKey(_apiKeyController.text.trim());
-                          }
-                        },
-                        child: const Text('Kaydet'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Clipboard.setData(const ClipboardData(text: 'https://console.groq.com/keys'));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Link kopyalandı!')),
-                      );
-                    },
-                    child: Text(
-                      '🔗 console.groq.com/keys adresinden ücretsiz API anahtarı alın',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[400],
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          
-          // Tab content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildReportTab(
-                  report: _dailyReport,
-                  isLoading: _isLoadingDaily,
-                  onGenerate: _generateDailyReport,
-                  title: 'Günlük Rapor',
-                  icon: Icons.today,
-                  color: Colors.blue,
-                ),
-                _buildReportTab(
-                  report: _weeklyReport,
-                  isLoading: _isLoadingWeekly,
-                  onGenerate: _generateWeeklyReport,
-                  title: 'Haftalık Rapor',
-                  icon: Icons.view_week,
-                  color: Colors.purple,
-                ),
-                _buildReportTab(
-                  report: _monthlyReport,
-                  isLoading: _isLoadingMonthly,
-                  onGenerate: _generateMonthlyReport,
-                  title: 'Aylık Rapor',
-                  icon: Icons.calendar_month,
-                  color: Colors.teal,
-                ),
-              ],
-            ),
+          _buildReportTab(
+            report: _dailyReport,
+            isLoading: _isLoadingDaily,
+            onGenerate: _generateDailyReport,
+            title: 'Günlük Rapor',
+            icon: Icons.today,
+            color: Colors.blue,
+          ),
+          _buildReportTab(
+            report: _weeklyReport,
+            isLoading: _isLoadingWeekly,
+            onGenerate: _generateWeeklyReport,
+            title: 'Haftalık Rapor',
+            icon: Icons.view_week,
+            color: Colors.purple,
+          ),
+          _buildReportTab(
+            report: _monthlyReport,
+            isLoading: _isLoadingMonthly,
+            onGenerate: _generateMonthlyReport,
+            title: 'Aylık Rapor',
+            icon: Icons.calendar_month,
+            color: Colors.teal,
           ),
         ],
       ),
@@ -449,4 +337,3 @@ class _AIReportScreenState extends State<AIReportScreen> with SingleTickerProvid
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 }
-

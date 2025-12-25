@@ -1,443 +1,185 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../models/prayer_tracking.dart';
+import '../core/network/dio_client.dart';
 import 'prayer_tracking_service.dart';
+import 'storage_service.dart';
 
-/// AI Report Service using Groq API (Llama 3.3 70B)
-/// Generates personalized prayer tracking reports in Turkish
+/// AI Report Service - connects to backend for AI-powered prayer reports
 class AIReportService {
   static final AIReportService _instance = AIReportService._internal();
   factory AIReportService() => _instance;
   AIReportService._internal();
 
+  final DioClient _client = DioClient();
   final PrayerTrackingService _trackingService = PrayerTrackingService();
-  
-  // Groq API configuration
-  static const String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const String _model = 'llama-3.3-70b-versatile';
-  
-  // API Key - should be stored securely in production
-  String? _apiKey;
-  
-  /// Set API key
-  void setApiKey(String key) {
-    _apiKey = key;
-  }
+  final StorageService _storageService = StorageService();
 
-  /// Check if API key is configured
-  bool get isConfigured => _apiKey != null && _apiKey!.isNotEmpty;
-
-  /// Generate daily report
+  /// Generate daily report via backend
   Future<AIReport> generateDailyReport([DateTime? date]) async {
     final targetDate = date ?? DateTime.now();
-    final dayRecord = _trackingService.getDayRecord(targetDate);
-    
-    if (dayRecord == null) {
-      return AIReport(
-        type: ReportType.daily,
-        date: targetDate,
-        content: 'Bu gün için namaz kaydı bulunamadı.',
-        isError: true,
-      );
-    }
-
-    final analysisData = _analyzeDailyData(dayRecord);
-    final prompt = _buildDailyPrompt(analysisData, targetDate);
-    
-    return _callGroqAPI(prompt, ReportType.daily, targetDate);
+    return _generateReport('daily', targetDate);
   }
 
-  /// Generate weekly report
+  /// Generate weekly report via backend
   Future<AIReport> generateWeeklyReport([DateTime? date]) async {
     final targetDate = date ?? DateTime.now();
-    final stats = _trackingService.getWeeklyStats(targetDate);
-    final lastSevenDays = _trackingService.getLastSevenDaysStats();
-    
-    final analysisData = _analyzeWeeklyData(stats, lastSevenDays);
-    final prompt = _buildWeeklyPrompt(analysisData, targetDate);
-    
-    return _callGroqAPI(prompt, ReportType.weekly, targetDate);
+    return _generateReport('weekly', targetDate);
   }
 
-  /// Generate monthly report
+  /// Generate monthly report via backend
   Future<AIReport> generateMonthlyReport([DateTime? date]) async {
     final targetDate = date ?? DateTime.now();
-    final monthlyStats = _trackingService.getMonthlyStats(targetDate);
-    
-    final analysisData = _analyzeMonthlyData(monthlyStats);
-    final prompt = _buildMonthlyPrompt(analysisData, targetDate);
-    
-    return _callGroqAPI(prompt, ReportType.monthly, targetDate);
+    return _generateReport('monthly', targetDate);
   }
 
-  /// Analyze daily prayer data
-  Map<String, dynamic> _analyzeDailyData(DailyPrayerTracking dayRecord) {
-    final fardPrayers = dayRecord.prayers.where((p) => p.type == PrayerType.fard).toList();
-    
-    // Farz namaz analizi
-    final completedFard = fardPrayers.where((p) => p.isCompleted).length;
-    final missedFard = fardPrayers.where((p) => !p.isCompleted).map((p) => p.prayerName).toList();
-    
-    // Sünnet analizi
-    final completedSunnet = fardPrayers.where((p) => p.completedSunnet).length;
-    final missedSunnet = fardPrayers.where((p) => p.isCompleted && !p.completedSunnet)
-        .map((p) => p.prayerName).toList();
-    
-    // Tesbihat analizi
-    final completedTesbihat = fardPrayers.where((p) => p.completedTesbihat).length;
-    final missedTesbihat = fardPrayers.where((p) => p.isCompleted && !p.completedTesbihat)
-        .map((p) => p.prayerName).toList();
-    
-    // Nafile namazlar
-    final additionalPrayers = dayRecord.additionalPrayers;
-    final nafilePrayers = <String>[];
-    if (additionalPrayers.teheccud) nafilePrayers.add('Teheccüd');
-    if (additionalPrayers.duha) nafilePrayers.add('Duha');
-    if (additionalPrayers.evvabin) nafilePrayers.add('Evvabin');
-    if (additionalPrayers.tespih) nafilePrayers.add('Tesbih Namazı');
-    
-    // Kaza namazları
-    final kazaTotal = additionalPrayers.kazaPrayers.values.fold(0, (a, b) => a + b);
-    
-    return {
-      'totalFard': 5,
-      'completedFard': completedFard,
-      'missedFard': missedFard,
-      'completedSunnet': completedSunnet,
-      'missedSunnet': missedSunnet,
-      'completedTesbihat': completedTesbihat,
-      'missedTesbihat': missedTesbihat,
-      'nafilePrayers': nafilePrayers,
-      'kazaTotal': kazaTotal,
-      'kazaDetails': additionalPrayers.kazaPrayers,
-      'fardCompletionRate': (completedFard / 5 * 100).toStringAsFixed(0),
-      'sunnetRate': completedFard > 0 ? (completedSunnet / completedFard * 100).toStringAsFixed(0) : '0',
-      'tesbihatRate': completedFard > 0 ? (completedTesbihat / completedFard * 100).toStringAsFixed(0) : '0',
-    };
-  }
-
-  /// Analyze weekly prayer data
-  Map<String, dynamic> _analyzeWeeklyData(WeeklyPrayerStats stats, Map<String, dynamic> lastSevenDays) {
-    final records = stats.dailyRecords;
-    
-    // Her namaz için kaçırma sayısı
-    final missedByPrayer = <String, int>{
-      'Sabah': 0, 'Öğle': 0, 'İkindi': 0, 'Akşam': 0, 'Yatsı': 0
-    };
-    
-    // Tesbihat ve sünnet istatistikleri
-    int totalTesbihat = 0;
-    int totalSunnet = 0;
-    int totalCompleted = 0;
-    
-    // Nafile namazlar
-    int teheccudCount = 0;
-    int duhaCount = 0;
-    int evvabinCount = 0;
-    int tespihCount = 0;
-    int totalKaza = 0;
-    
-    for (final day in records) {
-      for (final prayer in day.prayers.where((p) => p.type == PrayerType.fard)) {
-        if (!prayer.isCompleted) {
-          missedByPrayer[prayer.prayerName] = (missedByPrayer[prayer.prayerName] ?? 0) + 1;
-        } else {
-          totalCompleted++;
-          if (prayer.completedSunnet) totalSunnet++;
-          if (prayer.completedTesbihat) totalTesbihat++;
-        }
-      }
-      
-      if (day.additionalPrayers.teheccud) teheccudCount++;
-      if (day.additionalPrayers.duha) duhaCount++;
-      if (day.additionalPrayers.evvabin) evvabinCount++;
-      if (day.additionalPrayers.tespih) tespihCount++;
-      totalKaza += day.additionalPrayers.kazaPrayers.values.fold(0, (a, b) => a + b);
-    }
-    
-    // En çok kaçırılan namaz
-    final mostMissed = missedByPrayer.entries
-        .reduce((a, b) => a.value > b.value ? a : b);
-    
-    // En az kaçırılan namaz
-    final leastMissed = missedByPrayer.entries
-        .reduce((a, b) => a.value < b.value ? a : b);
-
-    return {
-      'totalDays': records.length,
-      'totalFard': stats.totalFardCount,
-      'completedFard': stats.completedFardCount,
-      'fardCompletionRate': (stats.weeklyFardCompletionRate * 100).toStringAsFixed(0),
-      'mostMissedPrayer': mostMissed.key,
-      'mostMissedCount': mostMissed.value,
-      'leastMissedPrayer': leastMissed.key,
-      'leastMissedCount': leastMissed.value,
-      'missedByPrayer': missedByPrayer,
-      'totalSunnet': totalSunnet,
-      'totalTesbihat': totalTesbihat,
-      'sunnetRate': totalCompleted > 0 ? (totalSunnet / totalCompleted * 100).toStringAsFixed(0) : '0',
-      'tesbihatRate': totalCompleted > 0 ? (totalTesbihat / totalCompleted * 100).toStringAsFixed(0) : '0',
-      'teheccudCount': teheccudCount,
-      'duhaCount': duhaCount,
-      'evvabinCount': evvabinCount,
-      'tespihCount': tespihCount,
-      'totalKaza': totalKaza,
-      'bestDay': stats.bestDay?.date,
-      'worstDay': stats.worstDay?.date,
-    };
-  }
-
-  /// Analyze monthly prayer data
-  Map<String, dynamic> _analyzeMonthlyData(Map<String, dynamic> monthlyStats) {
-    final records = monthlyStats['records'] as List<DailyPrayerTracking>;
-    
-    // Haftalık trend analizi
-    final weeklyTrends = <double>[];
-    for (int i = 0; i < records.length; i += 7) {
-      final weekRecords = records.skip(i).take(7).toList();
-      if (weekRecords.isNotEmpty) {
-        final weekCompleted = weekRecords.fold(0, (sum, day) => sum + day.completedFardCount);
-        final weekTotal = weekRecords.fold(0, (sum, day) => sum + day.fardPrayerCount);
-        weeklyTrends.add(weekTotal > 0 ? weekCompleted / weekTotal : 0);
-      }
-    }
-    
-    // Trend yönü
-    String trend = 'stabil';
-    if (weeklyTrends.length >= 2) {
-      final firstHalf = weeklyTrends.take(weeklyTrends.length ~/ 2).fold(0.0, (a, b) => a + b);
-      final secondHalf = weeklyTrends.skip(weeklyTrends.length ~/ 2).fold(0.0, (a, b) => a + b);
-      if (secondHalf > firstHalf * 1.1) trend = 'yükseliş';
-      else if (secondHalf < firstHalf * 0.9) trend = 'düşüş';
-    }
-    
-    // Toplam nafile namazlar
-    int totalTeheccud = 0;
-    int totalDuha = 0;
-    int totalEvvabin = 0;
-    int totalTespih = 0;
-    int totalKaza = 0;
-    int totalSunnet = 0;
-    int totalTesbihat = 0;
-    
-    for (final day in records) {
-      if (day.additionalPrayers.teheccud) totalTeheccud++;
-      if (day.additionalPrayers.duha) totalDuha++;
-      if (day.additionalPrayers.evvabin) totalEvvabin++;
-      if (day.additionalPrayers.tespih) totalTespih++;
-      totalKaza += day.additionalPrayers.kazaPrayers.values.fold(0, (a, b) => a + b);
-      
-      for (final prayer in day.prayers.where((p) => p.type == PrayerType.fard && p.isCompleted)) {
-        if (prayer.completedSunnet) totalSunnet++;
-        if (prayer.completedTesbihat) totalTesbihat++;
-      }
-    }
-
-    return {
-      'month': monthlyStats['month'],
-      'year': monthlyStats['year'],
-      'totalDays': records.length,
-      'totalFard': monthlyStats['totalFard'],
-      'completedFard': monthlyStats['completedFard'],
-      'fardCompletionRate': ((monthlyStats['fardCompletionRate'] as double) * 100).toStringAsFixed(0),
-      'trend': trend,
-      'weeklyTrends': weeklyTrends,
-      'totalTeheccud': totalTeheccud,
-      'totalDuha': totalDuha,
-      'totalEvvabin': totalEvvabin,
-      'totalTespih': totalTespih,
-      'totalKaza': totalKaza,
-      'totalSunnet': totalSunnet,
-      'totalTesbihat': totalTesbihat,
-      'sunnetRate': monthlyStats['completedFard'] > 0 
-          ? (totalSunnet / monthlyStats['completedFard'] * 100).toStringAsFixed(0) : '0',
-      'tesbihatRate': monthlyStats['completedFard'] > 0 
-          ? (totalTesbihat / monthlyStats['completedFard'] * 100).toStringAsFixed(0) : '0',
-    };
-  }
-
-  /// Build daily prompt
-  String _buildDailyPrompt(Map<String, dynamic> data, DateTime date) {
-    final dayName = _getTurkishDayName(date.weekday);
-    
-    return '''
-Sen bir İslami ibadet danışmanısın. Kullanıcının günlük namaz verilerini analiz edip Türkçe, samimi ve motive edici bir rapor hazırla.
-
-📅 TARİH: $dayName, ${date.day}/${date.month}/${date.year}
-
-📊 GÜNLÜK VERİLER:
-- Farz Namaz: ${data['completedFard']}/5 kılındı (%${data['fardCompletionRate']})
-- Kaçırılan Namazlar: ${(data['missedFard'] as List).isEmpty ? 'Yok - Maşallah!' : (data['missedFard'] as List).join(', ')}
-- Sünnet Namazlar: ${data['completedSunnet']}/5 (%${data['sunnetRate']})
-- Tesbihat: ${data['completedTesbihat']}/5 (%${data['tesbihatRate']})
-- Kılınan Nafile Namazlar: ${(data['nafilePrayers'] as List).isEmpty ? 'Yok' : (data['nafilePrayers'] as List).join(', ')}
-- Kılınan Kaza Namazı: ${data['kazaTotal']} adet
-
-RAPOR FORMATI:
-1. Kısa bir selamlama ve genel değerlendirme (1-2 cümle)
-2. ✅ Başarılar (varsa)
-3. ⚠️ Dikkat Edilmesi Gerekenler (varsa)
-4. 💡 Kısa ve pratik 1-2 öneri
-5. Motive edici kapanış cümlesi
-
-NOT: Kısa ve öz tut (maksimum 150 kelime). Emoji kullan. Samimi ol ama saygılı. Dini nasihat değil, pratik öneriler ver.
-''';
-  }
-
-  /// Build weekly prompt
-  String _buildWeeklyPrompt(Map<String, dynamic> data, DateTime date) {
-    return '''
-Sen bir İslami ibadet danışmanısın. Kullanıcının haftalık namaz verilerini analiz edip Türkçe, detaylı ama okunabilir bir rapor hazırla.
-
-📅 HAFTA: ${date.day}/${date.month}/${date.year} haftası
-
-📊 HAFTALIK VERİLER:
-- Toplam Farz: ${data['completedFard']}/${data['totalFard']} (%${data['fardCompletionRate']})
-- En Çok Kaçırılan: ${data['mostMissedPrayer']} (${data['mostMissedCount']} gün)
-- En Az Kaçırılan: ${data['leastMissedPrayer']} (${data['leastMissedCount']} gün)
-- Sünnet Oranı: %${data['sunnetRate']}
-- Tesbihat Oranı: %${data['tesbihatRate']}
-
-NAFİLE NAMAZLAR (7 gün içinde):
-- Teheccüd: ${data['teheccudCount']} gün
-- Duha: ${data['duhaCount']} gün
-- Evvabin: ${data['evvabinCount']} gün
-- Tesbih Namazı: ${data['tespihCount']} gün
-- Kaza Namazı: ${data['totalKaza']} adet
-
-RAPOR FORMATI:
-1. Haftalık genel değerlendirme (2-3 cümle)
-2. 📈 Güçlü Yönler (en az 2 madde)
-3. 📉 Gelişim Alanları (en az 2 madde)
-4. 💡 Önümüzdeki Hafta İçin Hedefler (2-3 pratik öneri)
-5. Motive edici kapanış
-
-NOT: 200 kelimeyi geçme. Emoji kullan. Samimi ve cesaretlendirici ol.
-''';
-  }
-
-  /// Build monthly prompt
-  String _buildMonthlyPrompt(Map<String, dynamic> data, DateTime date) {
-    final monthName = _getTurkishMonthName(data['month'] as int);
-    
-    return '''
-Sen bir İslami ibadet danışmanısın. Kullanıcının aylık namaz verilerini analiz edip Türkçe, kapsamlı bir rapor hazırla.
-
-📅 AY: $monthName ${data['year']}
-
-📊 AYLIK VERİLER:
-- Toplam Gün: ${data['totalDays']}
-- Farz Namaz: ${data['completedFard']}/${data['totalFard']} (%${data['fardCompletionRate']})
-- Trend: ${data['trend']} (ay içinde performans değişimi)
-- Sünnet Oranı: %${data['sunnetRate']}
-- Tesbihat Oranı: %${data['tesbihatRate']}
-
-NAFİLE NAMAZLAR (ay boyunca):
-- Teheccüd: ${data['totalTeheccud']} gün
-- Duha: ${data['totalDuha']} gün
-- Evvabin: ${data['totalEvvabin']} gün
-- Tesbih Namazı: ${data['totalTespih']} gün
-- Toplam Kaza: ${data['totalKaza']} adet
-
-RAPOR FORMATI:
-1. Aylık genel değerlendirme ve trend analizi (3-4 cümle)
-2. 🏆 Ayın Başarıları (en önemli 3 başarı)
-3. 🎯 Gelişim Fırsatları (3 alan)
-4. 📊 Karşılaştırmalı Analiz (güçlü/zayıf vakitler)
-5. 🌟 Gelecek Ay İçin Öneriler (3 hedef)
-6. İlham verici kapanış
-
-NOT: 300 kelimeyi geçme. Emoji kullan. Profesyonel ama samimi ol.
-''';
-  }
-
-  /// Call Groq API
-  Future<AIReport> _callGroqAPI(String prompt, ReportType type, DateTime date) async {
-    if (!isConfigured) {
-      return AIReport(
-        type: type,
-        date: date,
-        content: 'API anahtarı yapılandırılmamış. Ayarlardan Groq API anahtarınızı girin.',
-        isError: true,
-      );
-    }
-
+  /// Call backend AI report endpoint
+  Future<AIReport> _generateReport(String type, DateTime date) async {
     try {
-      final dio = Dio();
-      final response = await dio.post(
-        _groqApiUrl,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $_apiKey',
-            'Content-Type': 'application/json',
-          },
-        ),
+      // Ensure auth token is set
+      final token = await _storageService.getAuthToken();
+      if (token != null) {
+        _client.setAuthToken(token);
+      }
+
+      // First sync local data to backend
+      await _syncLocalDataToBackend(date, type);
+
+      final response = await _client.post(
+        '/ai-report/generate',
         data: {
-          'model': _model,
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'Sen yardımsever bir İslami ibadet danışmanısın. Türkçe konuşuyorsun ve samimi ama saygılı bir üslubun var.'
-            },
-            {
-              'role': 'user',
-              'content': prompt,
-            }
-          ],
-          'temperature': 0.7,
-          'max_tokens': 1024,
+          'type': type,
+          'startDate': date.toIso8601String(),
         },
       );
 
-      if (response.statusCode == 200) {
-        final content = response.data['choices'][0]['message']['content'] as String;
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final reportData = response.data['report'];
         return AIReport(
-          type: type,
+          type: _getReportType(type),
           date: date,
-          content: content.trim(),
-          generatedAt: DateTime.now(),
+          content: reportData['content'] ?? 'Rapor oluşturulamadı.',
+          generatedAt: DateTime.tryParse(reportData['generatedAt'] ?? '') ?? DateTime.now(),
         );
       } else {
-        throw Exception('API hatası: ${response.statusCode}');
+        throw Exception(response.data['error'] ?? 'Unknown error');
       }
-    } on DioException catch (e) {
-      debugPrint('Groq API error: ${e.message}');
-      String errorMessage = 'Rapor oluşturulurken bir hata oluştu.';
-      
-      if (e.response?.statusCode == 401) {
-        errorMessage = 'Geçersiz API anahtarı. Lütfen kontrol edin.';
-      } else if (e.response?.statusCode == 429) {
-        errorMessage = 'Çok fazla istek. Lütfen biraz bekleyin.';
-      } else if (e.type == DioExceptionType.connectionError) {
-        errorMessage = 'İnternet bağlantınızı kontrol edin.';
-      }
-      
-      return AIReport(
-        type: type,
-        date: date,
-        content: errorMessage,
-        isError: true,
-      );
     } catch (e) {
       debugPrint('AI Report error: $e');
-      return AIReport(
-        type: type,
-        date: date,
-        content: 'Beklenmeyen bir hata oluştu: $e',
-        isError: true,
-      );
+      
+      // If backend fails, try local fallback
+      return _generateLocalFallback(type, date, e.toString());
     }
   }
 
-  String _getTurkishDayName(int weekday) {
-    const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-    return days[weekday - 1];
+  /// Sync local prayer data to backend before generating report
+  Future<void> _syncLocalDataToBackend(DateTime date, String type) async {
+    try {
+      if (type == 'daily') {
+        await _trackingService.saveDayRecordToApi(date);
+      } else if (type == 'weekly') {
+        // Sync last 7 days
+        for (int i = 0; i < 7; i++) {
+          final day = date.subtract(Duration(days: i));
+          await _trackingService.saveDayRecordToApi(day);
+        }
+      } else {
+        // Monthly - sync current month (last 30 days for simplicity)
+        for (int i = 0; i < 30; i++) {
+          final day = date.subtract(Duration(days: i));
+          await _trackingService.saveDayRecordToApi(day);
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync error (non-fatal): $e');
+      // Continue even if sync fails - backend might have old data
+    }
   }
 
-  String _getTurkishMonthName(int month) {
-    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-    return months[month - 1];
+  /// Generate local fallback report when backend is unavailable
+  AIReport _generateLocalFallback(String type, DateTime date, String error) {
+    String content;
+    
+    if (error.contains('401') || error.contains('Authentication')) {
+      content = '🔐 Lütfen önce giriş yapın.\n\nAI raporları için oturum açmanız gerekmektedir.';
+    } else if (error.contains('AI service not configured')) {
+      content = '⚠️ AI servisi henüz yapılandırılmamış.\n\nLütfen daha sonra tekrar deneyin.';
+    } else if (error.contains('Connection') || error.contains('timeout')) {
+      // Generate basic local stats
+      content = _generateBasicLocalReport(type, date);
+    } else {
+      content = '❌ Rapor oluşturulurken bir hata oluştu.\n\nHata: $error\n\nLütfen daha sonra tekrar deneyin.';
+    }
+    
+    return AIReport(
+      type: _getReportType(type),
+      date: date,
+      content: content,
+      isError: true,
+    );
+  }
+
+  /// Generate basic local report (without AI)
+  String _generateBasicLocalReport(String type, DateTime date) {
+    if (type == 'daily') {
+      final dayRecord = _trackingService.getDayRecord(date);
+      if (dayRecord == null) {
+        return '📊 Bugün için namaz kaydı bulunamadı.';
+      }
+      
+      final fardCount = dayRecord.completedFardCount;
+      final fardTotal = dayRecord.fardPrayerCount;
+      final rate = fardTotal > 0 ? (fardCount / fardTotal * 100).toStringAsFixed(0) : '0';
+      
+      return '''
+📊 Günlük Özet (${date.day}/${date.month}/${date.year})
+
+✅ Farz Namaz: $fardCount/$fardTotal (%$rate)
+
+⚠️ AI raporu şu an kullanılamıyor (internet bağlantısını kontrol edin).
+
+Bu basit bir özettir. Detaylı AI analizi için bağlantınızı kontrol edip tekrar deneyin.
+''';
+    } else if (type == 'weekly') {
+      final stats = _trackingService.getWeeklyStats(date);
+      final rate = (stats.weeklyFardCompletionRate * 100).toStringAsFixed(0);
+      
+      return '''
+📊 Haftalık Özet
+
+✅ Farz Namaz: ${stats.completedFardCount}/${stats.totalFardCount} (%$rate)
+📅 Toplam Gün: ${stats.dailyRecords.length}
+
+⚠️ AI raporu şu an kullanılamıyor (internet bağlantısını kontrol edin).
+
+Bu basit bir özettir. Detaylı AI analizi için bağlantınızı kontrol edip tekrar deneyin.
+''';
+    } else {
+      final stats = _trackingService.getMonthlyStats(date);
+      final rate = ((stats['fardCompletionRate'] as double) * 100).toStringAsFixed(0);
+      
+      return '''
+📊 Aylık Özet (${date.month}/${date.year})
+
+✅ Farz Namaz: ${stats['completedFard']}/${stats['totalFard']} (%$rate)
+
+⚠️ AI raporu şu an kullanılamıyor (internet bağlantısını kontrol edin).
+
+Bu basit bir özettir. Detaylı AI analizi için bağlantınızı kontrol edip tekrar deneyin.
+''';
+    }
+  }
+
+  ReportType _getReportType(String type) {
+    switch (type) {
+      case 'daily':
+        return ReportType.daily;
+      case 'weekly':
+        return ReportType.weekly;
+      case 'monthly':
+        return ReportType.monthly;
+      default:
+        return ReportType.daily;
+    }
   }
 }
 
@@ -474,4 +216,3 @@ enum ReportType {
   weekly,
   monthly,
 }
-
