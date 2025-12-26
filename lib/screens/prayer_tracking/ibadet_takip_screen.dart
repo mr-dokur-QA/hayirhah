@@ -41,6 +41,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
   DailyPrayerTracking? _currentRecord;
   bool _hasChanges = false;
   Timer? _autoSaveTimer;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -57,9 +58,28 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
   }
 
   Future<void> _initializeService() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    // First load from local storage
     await _trackingService.initialize();
+    
+    // Then sync from backend to get latest data
+    try {
+      final synced = await _trackingService.syncFromBackend();
+      debugPrint('IbadetTakipScreen: Backend sync result: $synced');
+    } catch (e) {
+      debugPrint('IbadetTakipScreen: Backend sync error: $e');
+    }
+    
     _loadCurrentRecord();
-    setState(() {});
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _loadCurrentRecord() {
@@ -207,7 +227,7 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
         
         // Content
         Expanded(
-          child: _currentRecord == null 
+          child: _isLoading || _currentRecord == null 
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
