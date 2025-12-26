@@ -84,7 +84,9 @@ export const generateReport = async (req: Request, res: Response): Promise<void>
         messages: [
           {
             role: 'system',
-            content: 'Sen yardımsever bir İslami ibadet danışmanısın. Türkçe konuşuyorsun ve samimi ama saygılı bir üslubun var.',
+            content: `Sen yardımsever bir İslami ibadet danışmanısın. Türkçe konuşuyorsun ve samimi ama saygılı bir üslubun var. 
+            
+ÖNEMLİ: Türkçe karakterleri doğru kullan (ö, ü, ş, ğ, ç, ı). Gerçekçi ol - eğer veri yoksa veya düşükse, olmayan başarıları uydurmayarak.`,
           },
           {
             role: 'user',
@@ -207,145 +209,299 @@ function analyzeData(records: any[], type: string): Record<string, any> {
 }
 
 function buildPrompt(data: Record<string, any>, type: string, date: Date): string {
-  const turkishDays = ['Pazar', 'Pazartesi', 'Sali', 'Carsamba', 'Persembe', 'Cuma', 'Cumartesi'];
-  const turkishMonths = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+  const turkishDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+  const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+  // Veri durumunu analiz et
+  const hasNoData = data.totalDays === 0;
+  const hasVeryLittleData = data.totalDays > 0 && data.completedFard === 0;
+  const hasLowCompletion = data.fardCompletionRate > 0 && data.fardCompletionRate < 20;
+  const hasMediumCompletion = data.fardCompletionRate >= 20 && data.fardCompletionRate < 60;
+  const hasGoodCompletion = data.fardCompletionRate >= 60;
+
+  // Veri durumuna göre özel talimatlar
+  let dataContextInstructions = '';
+  
+  if (hasNoData) {
+    dataContextInstructions = `
+⚠️ KRİTİK: Bu dönem için HİÇ VERİ YOK! Kullanıcı henüz kayıt yapmamış.
+- "Azimli olduğunu görüyorum", "Çaban takdire şayan" gibi YANLIŞ ifadeler KULLANMA!
+- Gerçekçi ol: veri yok demek başarı yok demek
+- Nazikçe uygulamayı kullanmaya ve kayıt yapmaya davet et
+- Başlangıç yapmanın öneminden bahset
+- Umut verici ama DÜRÜST ol`;
+  } else if (hasVeryLittleData) {
+    dataContextInstructions = `
+⚠️ DİKKAT: Kayıt var ama henüz HİÇ namaz işaretlenmemiş (0/${data.totalFard}).
+- Olmayan başarıları uydurmayarak
+- "Kayıt tutmaya başladın, bu önemli bir adım" gibi gerçekçi ifadeler kullan
+- Küçük adımlarla başlamayı teşvik et
+- Yargılama ama gerçekçi kal`;
+  } else if (hasLowCompletion) {
+    dataContextInstructions = `
+📊 Düşük tamamlanma oranı (%${data.fardCompletionRate}).
+- Mevcut çabayı takdir et ama abartmayarak
+- Yargılama, cesaretlendir
+- Küçük ve ulaşılabilir hedefler öner
+- Gerçekçi iyileştirme önerileri ver`;
+  } else if (hasMediumCompletion) {
+    dataContextInstructions = `
+📊 Orta düzey tamamlanma oranı (%${data.fardCompletionRate}).
+- Gelişimi takdir et
+- Güçlü yönleri vurgula
+- Daha iyiye gidebileceğini nazikçe belirt`;
+  } else if (hasGoodCompletion) {
+    dataContextInstructions = `
+📊 İyi bir tamamlanma oranı (%${data.fardCompletionRate}).
+- Başarıyı içtenlikle kutla
+- Sürdürülebilirlik için tavsiyeler ver
+- Nafile namazlara teşvik et`;
+  }
 
   const commonRules = `
-ONEMLI KURALLAR:
-- Samimi, sicak ve arkadas gibi bir dil kullan (Hayirhah modunda bir arkadas gibi)
-- ASLA yargilayici, elestiren veya suclayici olma
-- Kullaniciyi kotu hissettiren ifadeler YASAK
-- Her zaman tesvik edici ve destekleyici ol
-- Kullanicinin cabasini takdir et
-- Sadece Turkce karakterler ve cumleler kullan
-- Sadece bolum basliklarinda emoji kullan, metin icinde emoji kullanma
-- Raporun sonunda MUTLAKA kullaniciya dua et
-- Raporun sonunda konuyla ilgili kisa bir hadis veya ayet meali ekle ve kaynagini belirt
+ÖNEMLİ KURALLAR:
+- Türkçe karakterleri DOĞRU kullan: ö, ü, ş, ğ, ç, ı (ASCII olmayan karakterler)
+- Samimi, sıcak ve arkadaş gibi bir dil kullan
+- ASLA yargılayıcı, eleştiren veya suçlayıcı olma
+- Kullanıcıyı kötü hissettiren ifadeler YASAK
+- Her zaman teşvik edici ve destekleyici ol
+- Sadece bölüm başlıklarında emoji kullan
+- Raporun sonunda MUTLAKA kullanıcıya dua et
+- Konuyla ilgili kısa bir hadis veya ayet meali ekle ve kaynağını belirt
+
+${dataContextInstructions}
 `;
 
   if (type === 'daily') {
-    return `
-Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin gunluk namaz verilerini sicak bir dille ozetle.
+    if (hasNoData) {
+      return `
+Sen Hayırhah uygulamasının samimi asistanısın.
 
 ${commonRules}
 
-TARIH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
+TARİH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
 
-GUNLUK VERILER:
-- Farz Namaz: ${data.completedFard}/5
-- Sunnet: ${data.completedSunnet}/5
-- Tesbihat: ${data.completedTesbihat}/5
-- Kaza Namazi: ${data.totalKaza} adet
-- Teheccud: ${data.teheccudCount > 0 ? 'Evet' : 'Henuz yok'}
-- Duha: ${data.duhaCount > 0 ? 'Evet' : 'Henuz yok'}
+DURUM: Bugün için HİÇ namaz kaydı yok. Kullanıcı henüz veri girmemiş.
 
 RAPOR FORMATI:
 
-- "Merhaba kardesim!" diye baslayip gunun ozetini samimi bir dille anlat
+Merhaba kardeşim! ile başla, sonra:
 
-💪 GUCLU YONLERIN
-- Bugunku basarilarini ve guzel yonlerini vurgula (1-2 madde)
-
-🌱 GELISTIRILECEK YONLER
-- Nazikce ve tesvik edici sekilde onerilerde bulun
-- Eger her sey mukemmelse, bunu kutla
+🌟 YENİ BAŞLANGIÇ
+- Henüz bugün için kayıt olmadığını nazikçe belirt
+- Uygulamayı kullanmaya teşvik et
+- Kayıt yapmanın neden faydalı olduğunu kısaca anlat
 
 🤲 DUA
-- Icten bir dua ile kapatis
+- İçten bir dua ile kapanış
 
-📖 ILHAM
-- Kisa bir hadis veya ayet meali ve kaynagi
+📖 İLHAM
+- Başlangıç ve niyet hakkında kısa bir hadis veya ayet
 
-NOT: Maksimum 150 kelime. Arkadas gibi sicak ol.
+NOT: Maksimum 100 kelime. Sıcak ve davetkar ol. Olmayan başarıları uydurmayarak - veri yok!
 `;
-  } else if (type === 'weekly') {
+    }
+
     return `
-Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin haftalik namaz verilerini sicak bir dille analiz et.
+Sen Hayırhah uygulamasının samimi ve destekleyici asistanısın.
 
 ${commonRules}
 
-HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftasi
+TARİH: ${turkishDays[date.getDay()]}, ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}
 
-HAFTALIK VERILER:
-- Kayitli Gun: ${data.totalDays}
+GÜNLÜK VERİLER:
+- Farz Namaz: ${data.completedFard}/5 (%${Math.round((data.completedFard / 5) * 100)})
+- Sünnet: ${data.completedSunnet}/5
+- Tesbihat: ${data.completedTesbihat}/5
+- Kaza Namazı: ${data.totalKaza} adet
+- Teheccüd: ${data.teheccudCount > 0 ? 'Evet' : 'Hayır'}
+- Duha: ${data.duhaCount > 0 ? 'Evet' : 'Hayır'}
+
+RAPOR FORMATI:
+
+Merhaba kardeşim! ile başla, sonra duruma göre:
+
+${data.completedFard > 0 ? `
+💪 GÜÇLÜ YÖNLERİN
+- Bugünkü GERÇEK başarılarını vurgula (sadece veriye dayalı!)
+` : `
+🌱 YENİ BAŞLANGIÇ
+- Kayıt var ama henüz namaz işaretlenmediğini nazikçe belirt
+- Küçük adımlarla başlamayı teşvik et
+`}
+
+🌱 GELİŞTİRİLECEK YÖNLER
+- Nazikçe ve teşvik edici önerilerde bulun
+
+🤲 DUA
+- İçten bir dua ile kapanış
+
+📖 İLHAM
+- Kısa bir hadis veya ayet meali ve kaynağı
+
+NOT: Maksimum 150 kelime. Gerçekçi ol!
+`;
+  } else if (type === 'weekly') {
+    if (hasNoData) {
+      return `
+Sen Hayırhah uygulamasının samimi asistanısın.
+
+${commonRules}
+
+HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftası
+
+DURUM: Bu hafta için HİÇ kayıt yok.
+
+RAPOR FORMATI:
+
+Merhaba kardeşim! ile başla, sonra:
+
+🌟 YENİ BİR HAFTA
+- Henüz kayıt olmadığını nazikçe belirt
+- Bu haftayı değerlendirmeye davet et
+- Düzenli kayıt tutmanın faydalarını anlat
+
+🎯 ÖNERİ
+- Günde bir vakit ile başlamayı öner
+
+🤲 DUA
+- İçten bir dua
+
+📖 İLHAM
+- İstikrar hakkında hadis veya ayet
+
+NOT: Maksimum 120 kelime. Yargılamadan cesaretlendir. Olmayan başarıları uydurmayarak!
+`;
+    }
+
+    return `
+Sen Hayırhah uygulamasının samimi ve destekleyici asistanısın.
+
+${commonRules}
+
+HAFTA: ${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()} haftası
+
+HAFTALIK VERİLER:
+- Kayıtlı Gün: ${data.totalDays}
 - Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
-- En Duzenli Vakit: ${data.leastMissedPrayer}
-- En Zorlandigi Vakit: ${data.mostMissedPrayer}
-- Sunnet Orani: %${data.sunnetRate}
-- Tesbihat Orani: %${data.tesbihatRate}
+- En Düzenli Vakit: ${data.leastMissedPrayer}
+- En Zorlandığı Vakit: ${data.mostMissedPrayer}
+- Sünnet Oranı: %${data.sunnetRate}
+- Tesbihat Oranı: %${data.tesbihatRate}
 
-NAFILE NAMAZLAR:
-- Teheccud: ${data.teheccudCount} gun
-- Duha: ${data.duhaCount} gun
-- Evvabin: ${data.evvabinCount} gun
-- Tesbih Namazi: ${data.tespihCount} gun
+NAFİLE NAMAZLAR:
+- Teheccüd: ${data.teheccudCount} gün
+- Duha: ${data.duhaCount} gün
+- Evvabin: ${data.evvabinCount} gün
+- Tesbih Namazı: ${data.tespihCount} gün
 - Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
 
-- "Merhaba kardesim!" diye baslayip haftanin kisa bir ozetini ver
+Merhaba kardeşim! ile başla, sonra:
 
-💪 GUCLU YONLERIN
-- Bu haftaki basarilari ve parlayan yonleri vurgula (2-3 madde)
-- Hangi vakitte basarili, nafile namazlar, tesbihat vs.
+${data.completedFard > 0 ? `
+💪 GÜÇLÜ YÖNLERİN
+- Bu haftaki GERÇEK başarıları vurgula (veriye dayalı!)
+` : `
+🌱 BAŞLANGIÇ NOKTASI
+- Kayıt olduğunu ama henüz namaz işaretlenmediğini belirt
+- Cesaretlendir ama gerçekçi kal
+`}
 
-🌱 GELISTIRILECEK YONLER
-- Nazikce ve tesvik edici oneriler (davet seklinde)
-- Cok basariliysa bunu kutla
+🌱 GELİŞTİRİLECEK YÖNLER
+- Nazikçe öneriler
 
 🤲 DUA
-- Icten bir dua ile kapatis
+- İçten bir dua ile kapanış
 
-📖 ILHAM
-- Ilham verici bir hadis veya ayet meali ve kaynagi
+📖 İLHAM
+- Hadis veya ayet meali ve kaynağı
 
-NOT: Maksimum 180 kelime. Arkadas gibi samimi ol.
+NOT: Maksimum 180 kelime. Veriye dayalı konuş!
 `;
   } else {
-    return `
-Sen Hayirhah uygulamasinin samimi ve destekleyici asistanisin. Kullanicinin aylik namaz verilerini sicak bir dille ozetle.
+    // monthly
+    if (hasNoData) {
+      return `
+Sen Hayırhah uygulamasının samimi asistanısın.
 
 ${commonRules}
 
 AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
 
-AYLIK VERILER:
-- Kayitli Gun: ${data.totalDays}
-- Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
-- En Duzenli Vakit: ${data.leastMissedPrayer}
-- En Zorlandigi Vakit: ${data.mostMissedPrayer}
-- Sunnet Orani: %${data.sunnetRate}
-- Tesbihat Orani: %${data.tesbihatRate}
+DURUM: Bu ay için HİÇ kayıt yok.
 
-NAFILE NAMAZLAR:
-- Teheccud: ${data.totalTeheccud || data.teheccudCount} gun
-- Duha: ${data.totalDuha || data.duhaCount} gun
-- Evvabin: ${data.totalEvvabin || data.evvabinCount} gun
-- Tesbih Namazi: ${data.totalTespih || data.tespihCount} gun
+RAPOR FORMATI:
+
+Merhaba kardeşim! ile başla, sonra:
+
+🌙 YENİ AY, YENİ FIRSATLAR
+- Henüz kayıt olmadığını nazikçe belirt
+- Bu ayı değerlendirmeye davet et
+- Aylık hedef koymanın faydalarını anlat
+
+🎯 ÖNERİ
+- Küçük ve ulaşılabilir bir aylık hedef öner
+
+🤲 DUA
+- İçten bir dua
+
+📖 İLHAM
+- Sabır ve istikrar hakkında hadis veya ayet
+
+NOT: Maksimum 120 kelime. Motive edici ol ama gerçekçi kal. Olmayan başarıları uydurmayarak!
+`;
+    }
+
+    return `
+Sen Hayırhah uygulamasının samimi ve destekleyici asistanısın.
+
+${commonRules}
+
+AY: ${turkishMonths[date.getMonth()]} ${date.getFullYear()}
+
+AYLIK VERİLER:
+- Kayıtlı Gün: ${data.totalDays}
+- Farz Namaz: ${data.completedFard}/${data.totalFard} (%${data.fardCompletionRate})
+- En Düzenli Vakit: ${data.leastMissedPrayer}
+- En Zorlandığı Vakit: ${data.mostMissedPrayer}
+- Sünnet Oranı: %${data.sunnetRate}
+- Tesbihat Oranı: %${data.tesbihatRate}
+
+NAFİLE NAMAZLAR:
+- Teheccüd: ${data.teheccudCount} gün
+- Duha: ${data.duhaCount} gün
+- Evvabin: ${data.evvabinCount} gün
+- Tesbih Namazı: ${data.tespihCount} gün
 - Toplam Kaza: ${data.totalKaza} adet
 
 RAPOR FORMATI:
 
-- "Merhaba kardesim!" diye baslayip ayin kisa bir ozetini ver
+Merhaba kardeşim! ile başla, sonra:
 
-💪 GUCLU YONLERIN
-- Bu ayki basarilari ve one cikan yonleri vurgula (3-4 madde)
-- Hangi vakitler guclu, nafile namazlar, tesbihat, kaza performansi
+${data.completedFard > 0 ? `
+💪 GÜÇLÜ YÖNLERİN
+- Bu ayki GERÇEK başarıları vurgula (veriye dayalı!)
+` : `
+🌱 YENİ BAŞLANGIÇ
+- Kayıt olduğunu ama henüz namaz işaretlenmediğini belirt
+- Cesaretlendir, yargılama
+`}
 
-🌱 GELISTIRILECEK YONLER
-- Nazikce ve tesvik edici oneriler (davet seklinde, baski yapma)
+🌱 GELİŞTİRİLECEK YÖNLER
+- Nazikçe öneriler
 
-📈 GELECEK AY ICIN HEDEFLER
-- 1-2 kucuk ve ulasildabilir hedef oner
+📈 GELECEK AY İÇİN HEDEFLER
+- 1-2 küçük ve ulaşılabilir hedef öner
 
 🤲 DUA
-- Icten bir dua ile kapatis
+- İçten bir dua ile kapanış
 
-📖 ILHAM
-- Ilham verici bir hadis veya ayet meali ve kaynagi
+📖 İLHAM
+- Hadis veya ayet meali ve kaynağı
 
-NOT: Maksimum 220 kelime. Arkadas gibi sicak ve samimi ol.
+NOT: Maksimum 220 kelime. Gerçekçi ol!
 `;
   }
 }
-
