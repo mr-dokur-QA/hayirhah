@@ -181,16 +181,6 @@ class AdditionalPrayersTracking {
     },
   );
 
-  // Convert to health data format for API
-  Map<String, dynamic> toHealthData() {
-    return {
-      'teheccud': teheccud,
-      'duha': duha,
-      'evvabin': evvabin,
-      'tespih': tespih,
-      // Kaza prayers are handled separately in the API format
-    };
-  }
 }
 
 class DailyPrayerTracking {
@@ -295,12 +285,10 @@ class DailyPrayerTracking {
       kazaPrayers[_normalizePrayerKey(key)] = value;
     });
 
-    // Backend healthData is for unrelated metrics (water, exercise, etc.)
     return {
       'fardPrayers': fardPrayers,
       'sunnahPrayers': sunnahPrayers,
       'kazaPrayers': kazaPrayers,
-      'healthData': <String, dynamic>{},
     };
   }
 

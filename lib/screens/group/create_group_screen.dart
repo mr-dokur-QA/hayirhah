@@ -18,7 +18,6 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _apiService = ApiService();
 
   String? _selectedTemplate;
-  bool _isPrivate = false;
   bool _isLoading = false;
   DateTime? _deadline;
 
@@ -101,6 +100,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return;
     }
     
+    // Son tarih zorunlu kontrolü
+    if (_deadline == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Son tarihi girmeden etkinlik oluşturamazsınız'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     if (!_formKey.currentState!.validate()) return;
 
     // Check if user is logged in
@@ -155,9 +165,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             description: description,
             type: _selectedTemplate!,
             targetCount: targetCount,
-            isPrivate: _isPrivate,
+            isPrivate: true, // Tüm etkinlikler özel
             // Backend expects YYYY-MM-DD
-            deadline: _deadline != null ? _deadline!.toIso8601String().split('T')[0] : null,
+            deadline: _deadline!.toIso8601String().split('T')[0],
           );
           print('API result: $result');
 
@@ -223,8 +233,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           description: description,
           type: _selectedTemplate!,
           targetCount: targetCount,
-          isPrivate: _isPrivate,
-          deadline: _deadline,
+          isPrivate: true, // Tüm etkinlikler özel
+          deadline: _deadline!,
         );
 
         Navigator.pop(context, true);
@@ -477,45 +487,51 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           ),
                           const SizedBox(height: 12),
 
-                          // Settings section - Compact
+                          // Settings section - Son Tarih (Zorunlu)
                           Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
                               color: Colors.white.withAlpha(25),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withAlpha(30),
+                                color: _deadline == null ? Colors.red.withAlpha(100) : Colors.white.withAlpha(30),
+                                width: _deadline == null ? 2 : 1,
                               ),
                             ),
                             child: Column(
                               children: [
-                                // Privacy setting
-                                SwitchListTile(
-                                  title: const Text('Özel Etkinlik', style: TextStyle(color: Colors.white)),
-                                  subtitle: const Text('Sadece davet linki ile katılım', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                                  value: _isPrivate,
-                                  activeColor: Colors.amber,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _isPrivate = value;
-                                    });
-                                  },
-                                  secondary: Icon(
-                                    _isPrivate ? Icons.lock : Icons.lock_open,
-                                    color: _isPrivate ? Colors.amber : Colors.white54,
-                                  ),
-                                ),
-                                Divider(height: 1, color: Colors.white.withAlpha(30)),
-                                // Deadline setting
+                                // Deadline setting (zorunlu)
                                 ListTile(
-                                  title: const Text('Son Tarih', style: TextStyle(color: Colors.white)),
+                                  title: Row(
+                                    children: [
+                                      const Text('Son Tarih', style: TextStyle(color: Colors.white)),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withAlpha(150),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'Zorunlu',
+                                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                   subtitle: Text(
                                     _deadline != null 
                                         ? StorageService.formatDateTurkish(_deadline!)
-                                        : 'Tarih seçilmedi',
-                                    style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                        : 'Tarih seçilmedi - Lütfen bir tarih seçin',
+                                    style: TextStyle(
+                                      color: _deadline != null ? Colors.white60 : Colors.red.shade300,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                  leading: const Icon(Icons.calendar_today, color: Colors.white70),
+                                  leading: Icon(
+                                    Icons.calendar_today, 
+                                    color: _deadline == null ? Colors.red.shade300 : Colors.white70,
+                                  ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [

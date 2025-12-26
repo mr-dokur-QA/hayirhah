@@ -39,7 +39,6 @@ model PrayerTracking {
   fardPrayers   Json?
   sunnahPrayers Json?
   kazaPrayers   Json?
-  healthData    Json?
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])

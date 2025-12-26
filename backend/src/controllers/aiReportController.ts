@@ -267,7 +267,6 @@ function buildPrompt(data: Record<string, any>, type: string, date: Date): strin
 - Her zaman teşvik edici ve destekleyici ol
 - Sadece bölüm başlıklarında emoji kullan
 - Raporun sonunda MUTLAKA kullanıcıya dua et
-- Konuyla ilgili kısa bir hadis veya ayet meali ekle ve kaynağını belirt
 
 ${dataContextInstructions}
 `;
@@ -294,9 +293,6 @@ Merhaba kardeşim! ile başla, sonra:
 
 🤲 DUA
 - İçten bir dua ile kapanış
-
-📖 İLHAM
-- Başlangıç ve niyet hakkında kısa bir hadis veya ayet
 
 NOT: Maksimum 100 kelime. Sıcak ve davetkar ol. Olmayan başarıları uydurmayarak - veri yok!
 `;
@@ -336,9 +332,6 @@ ${data.completedFard > 0 ? `
 🤲 DUA
 - İçten bir dua ile kapanış
 
-📖 İLHAM
-- Kısa bir hadis veya ayet meali ve kaynağı
-
 NOT: Maksimum 150 kelime. Gerçekçi ol!
 `;
   } else if (type === 'weekly') {
@@ -366,9 +359,6 @@ Merhaba kardeşim! ile başla, sonra:
 
 🤲 DUA
 - İçten bir dua
-
-📖 İLHAM
-- İstikrar hakkında hadis veya ayet
 
 NOT: Maksimum 120 kelime. Yargılamadan cesaretlendir. Olmayan başarıları uydurmayarak!
 `;
@@ -415,9 +405,6 @@ ${data.completedFard > 0 ? `
 🤲 DUA
 - İçten bir dua ile kapanış
 
-📖 İLHAM
-- Hadis veya ayet meali ve kaynağı
-
 NOT: Maksimum 180 kelime. Veriye dayalı konuş!
 `;
   } else {
@@ -446,9 +433,6 @@ Merhaba kardeşim! ile başla, sonra:
 
 🤲 DUA
 - İçten bir dua
-
-📖 İLHAM
-- Sabır ve istikrar hakkında hadis veya ayet
 
 NOT: Maksimum 120 kelime. Motive edici ol ama gerçekçi kal. Olmayan başarıları uydurmayarak!
 `;
@@ -497,9 +481,6 @@ ${data.completedFard > 0 ? `
 
 🤲 DUA
 - İçten bir dua ile kapanış
-
-📖 İLHAM
-- Hadis veya ayet meali ve kaynağı
 
 NOT: Maksimum 220 kelime. Gerçekçi ol!
 `;

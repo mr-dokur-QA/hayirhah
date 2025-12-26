@@ -5,7 +5,6 @@ import {
   updateFardPrayer,
   updateSunnahPrayer,
   updateKazaPrayers,
-  updateHealthData,
   getDateRangeRecords,
   getWeeklyStats,
   getMonthlyStats,
@@ -34,7 +33,6 @@ router.get('/test', (_req, res) => {
       updateFardPrayer: 'PUT /api/prayer-tracking/:date/fard (requires auth)',
       updateSunnahPrayer: 'PUT /api/prayer-tracking/:date/sunnah (requires auth)',
       updateKazaPrayers: 'PUT /api/prayer-tracking/:date/kaza (requires auth)',
-      updateHealthData: 'PUT /api/prayer-tracking/:date/health (requires auth)',
       getDateRangeRecords: 'GET /api/prayer-tracking/range/records?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD (requires auth)',
       getWeeklyStats: 'GET /api/prayer-tracking/stats/weekly?startDate=YYYY-MM-DD (requires auth)',
       getMonthlyStats: 'GET /api/prayer-tracking/stats/monthly?year=YYYY&month=MM (requires auth)',
@@ -55,13 +53,6 @@ router.get('/test', (_req, res) => {
       },
       kazaPrayers: {
         sabah: 0, ogle: 0, ikindi: 0, aksam: 0, yatsi: 0,
-      },
-      healthData: {
-        waterIntake: 0, // liters (0-20)
-        exerciseHours: 0, // hours (0-24)
-        quranPages: 0, // pages (0-604)
-        oralHygiene: false,
-        readingHours: 0, // hours (0-24)
       },
     },
   });
@@ -118,15 +109,6 @@ router.put('/:date/sunnah', authenticate, prayerRateLimit, updateSunnahPrayer);
  * @body    {object} kazaData - Kaza prayer counts
  */
 router.put('/:date/kaza', authenticate, prayerRateLimit, updateKazaPrayers);
-
-/**
- * @route   PUT /api/prayer-tracking/:date/health
- * @desc    Update health data
- * @access  Private
- * @param   {string} date - Date in YYYY-MM-DD format
- * @body    {object} healthData - Health tracking data
- */
-router.put('/:date/health', authenticate, prayerRateLimit, updateHealthData);
 
 /**
  * @route   GET /api/prayer-tracking/range/records
