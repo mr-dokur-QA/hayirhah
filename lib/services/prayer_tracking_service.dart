@@ -470,6 +470,18 @@ class PrayerTrackingService extends ChangeNotifier {
     }
   }
 
+  /// Normalize prayer name to backend key format
+  String _normalizePrayerNameToKey(String prayerName) {
+    final lower = prayerName.trim().toLowerCase();
+    // Handle Turkish diacritics and common variants
+    if (lower == 'öğle' || lower == 'ogle') return 'ogle';
+    if (lower == 'akşam' || lower == 'aksam') return 'aksam';
+    if (lower == 'yatsı' || lower == 'yatsi') return 'yatsi';
+    if (lower == 'sabah') return 'sabah';
+    if (lower == 'ikindi' || lower == 'İkindi') return 'ikindi';
+    return lower;
+  }
+
   /// Convert backend record format to DailyPrayerTracking
   DailyPrayerTracking? _convertBackendRecord(
     Map<String, dynamic> record,
@@ -482,11 +494,15 @@ class PrayerTrackingService extends ChangeNotifier {
       
       // Parse fard prayers from backend
       final fardPrayers = record['fardPrayers'];
+      debugPrint('PrayerTrackingService: Parsing fardPrayers: $fardPrayers');
       if (fardPrayers is Map) {
         final prayers = List<PrayerRecord>.from(result.prayers);
         
         for (final prayer in prayers) {
-          final backendPrayer = fardPrayers[prayer.id.split('_').first];
+          // Use prayer name to find the matching backend key
+          final backendKey = _normalizePrayerNameToKey(prayer.prayerName);
+          final backendPrayer = fardPrayers[backendKey];
+          debugPrint('PrayerTrackingService: Prayer ${prayer.prayerName} -> key: $backendKey, backendData: $backendPrayer');
           if (backendPrayer is Map) {
             final index = prayers.indexWhere((p) => p.id == prayer.id);
             if (index != -1) {
@@ -495,6 +511,7 @@ class PrayerTrackingService extends ChangeNotifier {
                 completedSunnet: backendPrayer['completedSunnet'] == true,
                 completedTesbihat: backendPrayer['completedTesbihat'] == true,
               );
+              debugPrint('PrayerTrackingService: Updated prayer ${prayer.prayerName} - isCompleted: ${backendPrayer['isCompleted']}');
             }
           }
         }
@@ -518,11 +535,20 @@ class PrayerTrackingService extends ChangeNotifier {
       final kazaPrayers = record['kazaPrayers'];
       if (kazaPrayers is Map) {
         final kazaMap = <String, int>{};
+        // Map backend keys to local Turkish keys
+        final keyMapping = {
+          'sabah': 'sabah',
+          'ogle': 'öğle',
+          'ikindi': 'ikindi',
+          'aksam': 'akşam',
+          'yatsi': 'yatsı',
+        };
         kazaPrayers.forEach((key, value) {
+          final localKey = keyMapping[key] ?? key;
           if (value is int) {
-            kazaMap[key] = value;
+            kazaMap[localKey] = value;
           } else if (value is num) {
-            kazaMap[key] = value.toInt();
+            kazaMap[localKey] = value.toInt();
           }
         });
         
