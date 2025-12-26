@@ -68,6 +68,14 @@ router.get('/test', (_req, res) => {
 });
 
 /**
+ * @route   GET /api/prayer-tracking/all
+ * @desc    Get all prayer tracking records for the current user
+ * @access  Private
+ * @note    This route MUST be before /:date to avoid "all" being matched as a date
+ */
+router.get('/all', authenticate, statsRateLimit, getAllRecords);
+
+/**
  * @route   GET /api/prayer-tracking/:date
  * @desc    Get daily prayer tracking record
  * @access  Private
@@ -119,13 +127,6 @@ router.put('/:date/kaza', authenticate, prayerRateLimit, updateKazaPrayers);
  * @body    {object} healthData - Health tracking data
  */
 router.put('/:date/health', authenticate, prayerRateLimit, updateHealthData);
-
-/**
- * @route   GET /api/prayer-tracking/all
- * @desc    Get all prayer tracking records for the current user
- * @access  Private
- */
-router.get('/all', authenticate, statsRateLimit, getAllRecords);
 
 /**
  * @route   GET /api/prayer-tracking/range/records
