@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:just_audio/just_audio.dart';
 
 import 'api_service.dart';
 
@@ -17,10 +18,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
+  NotificationService._internal();
+  static final NotificationService instance = NotificationService._internal();
+  factory NotificationService() => instance;
 
   final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
+  final AudioPlayer _audioPlayer = AudioPlayer();
   bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSub;
 
@@ -43,12 +46,7 @@ class NotificationService {
     await _local.initialize(initSettings);
 
     // Ask notification permissions (iOS + Android 13+ is handled by plugin runtime too)
-    final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
+    await requestPermissions();
 
     // Ensure foreground notifications are presented on iOS
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
@@ -65,6 +63,43 @@ class NotificationService {
       debugPrint('🔄 FCM token refreshed');
       await syncDeviceTokenToBackend(tokenOverride: newToken);
     });
+  }
+
+  Future<void> requestPermissions() async {
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
+  }
+
+  // ---- Existing app API surface (used by settings/prayer services) ----
+
+  Future<void> playAzanPreview(String azanId) async {
+    try {
+      await _audioPlayer.setAsset('assets/sounds/azan_$azanId.mp3');
+      await _audioPlayer.play();
+    } catch (e) {
+      debugPrint('Error playing azan preview: $e');
+    }
+  }
+
+  Future<void> stopAzanPreview() async {
+    try {
+      await _audioPlayer.stop();
+    } catch (e) {
+      debugPrint('Error stopping azan preview: $e');
+    }
+  }
+
+  Future<void> cancelAllNotifications() async {
+    await _local.cancelAll();
+  }
+
+  Future<void> schedulePrayerTimeNotifications(Map<String, dynamic> prayerTimes) async {
+    // Not implemented yet (future feature).
+    debugPrint('Prayer time notifications not yet implemented');
   }
 
   /// Send current FCM token to backend (requires user to be logged in).
@@ -118,48 +153,3 @@ class NotificationService {
     );
   }
 }
-
-import 'package:just_audio/just_audio.dart';
-
-class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
-  NotificationService._internal();
-
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  
-  Future<void> initialize() async {
-    // Audio player initialization - notifications will be implemented later
-  }
-
-  Future<void> requestPermissions() async {
-    // Notification permissions will be implemented when notification system is added
-  }
-
-  Future<void> playAzanPreview(String azanId) async {
-    try {
-      await _audioPlayer.setAsset('assets/sounds/azan_$azanId.mp3');
-      await _audioPlayer.play();
-    } catch (e) {
-      print('Error playing azan preview: $e');
-    }
-  }
-
-  Future<void> stopAzanPreview() async {
-    try {
-      await _audioPlayer.stop();
-    } catch (e) {
-      print('Error stopping azan preview: $e');
-    }
-  }
-
-  Future<void> cancelAllNotifications() async {
-    // Will be implemented when notification system is added
-  }
-
-  Future<void> schedulePrayerTimeNotifications(Map<String, dynamic> prayerTimes) async {
-    // Prayer time notifications will be implemented when notification system is added
-    print('Prayer time notifications not yet implemented');
-  }
-
-} 
