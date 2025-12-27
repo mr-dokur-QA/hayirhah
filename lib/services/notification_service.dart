@@ -74,6 +74,15 @@ class NotificationService {
     debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
   }
 
+  Future<String?> getFcmToken() async {
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('⚠️ getToken error: $e');
+      return null;
+    }
+  }
+
   // ---- Existing app API surface (used by settings/prayer services) ----
 
   Future<void> playAzanPreview(String azanId) async {
@@ -104,10 +113,10 @@ class NotificationService {
 
   /// Send current FCM token to backend (requires user to be logged in).
   /// Safe to call multiple times; backend upserts by (userId, token).
-  Future<void> syncDeviceTokenToBackend({String? tokenOverride}) async {
+  Future<bool> syncDeviceTokenToBackend({String? tokenOverride}) async {
     try {
       final token = tokenOverride ?? await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) return false;
 
       final platform = switch (defaultTargetPlatform) {
         TargetPlatform.android => 'android',
@@ -122,8 +131,10 @@ class NotificationService {
       if (!ok) {
         debugPrint('⚠️ Device token registration failed (maybe not logged in yet).');
       }
+      return ok;
     } catch (e) {
       debugPrint('⚠️ Device token sync error (non-fatal): $e');
+      return false;
     }
   }
 

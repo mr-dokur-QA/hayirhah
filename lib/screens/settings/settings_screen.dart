@@ -547,6 +547,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () async {
+              final fcmToken = await _notificationService.getFcmToken();
+              final saved = await _notificationService.syncDeviceTokenToBackend();
               final result = await _apiService.sendNotificationTest();
               if (!mounted) return;
               if (result == null) {
@@ -557,9 +559,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
 
               final ok = result['ok'] == true;
+              final tokenInfo = (fcmToken == null || fcmToken.isEmpty)
+                  ? 'FCM token: (yok)'
+                  : 'FCM token: ${fcmToken.substring(0, 10)}... (${fcmToken.length})';
               final msg = ok
-                  ? 'Test bildirimi gönderildi (sent: ${result['sent']}, failed: ${result['failed']}).'
-                  : 'Test bildirimi gönderilemedi: ${result['reason'] ?? 'unknown'}.';
+                  ? '$tokenInfo | Kaydet: ${saved ? 'ok' : 'fail'} | Test: sent=${result['sent']} failed=${result['failed']}'
+                  : '$tokenInfo | Kaydet: ${saved ? 'ok' : 'fail'} | Test: ${result['reason'] ?? 'unknown'}';
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(msg)),
               );
