@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { z } from 'zod';
+import admin from 'firebase-admin';
+import { getFirebaseAdmin } from '../config/firebaseAdmin';
 
 // Task status types
 const TASK_STATUSES = ['available', 'assigned', 'completed'] as const;
@@ -27,6 +29,41 @@ const updateTaskSchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
   amount: z.number().min(1).optional(),
 });
+
+type PushPayload = {
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+};
+
+async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<void> {
+  const app = getFirebaseAdmin();
+  if (!app) return;
+
+  if (!userIds.length) return;
+
+  const tokens = await prisma.deviceToken.findMany({
+    where: { userId: { in: userIds } },
+    select: { token: true },
+  });
+
+  const uniqueTokens = Array.from(new Set(tokens.map(t => t.token))).filter(Boolean);
+  if (!uniqueTokens.length) return;
+
+  // FCM multicast supports up to 500 tokens per call
+  const chunkSize = 500;
+  for (let i = 0; i < uniqueTokens.length; i += chunkSize) {
+    const chunk = uniqueTokens.slice(i, i + chunkSize);
+    await admin.messaging().sendEachForMulticast({
+      tokens: chunk,
+      notification: {
+        title: payload.title,
+        body: payload.body,
+      },
+      data: payload.data,
+    });
+  }
+}
 
 /**
  * Get group tasks
@@ -428,7 +465,7 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
     // Check group type first
     const group = await prisma.group.findUnique({
       where: { id: groupId },
-      select: { id: true, type: true, targetCount: true },
+      select: { id: true, title: true, type: true, targetCount: true },
     });
 
     if (!group) {
@@ -496,6 +533,36 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
         where: { id: groupId },
         data: { currentProgress: completed },
       });
+
+      // Push notifications (non-blocking)
+      void (async () => {
+        try {
+          const memberships = await prisma.groupMember.findMany({
+            where: { groupId },
+            select: { userId: true },
+          });
+          const allUserIds = memberships.map(m => m.userId);
+          const otherUserIds = allUserIds.filter(id => id !== req.user!.userId);
+
+          // 1) Task completed (to others)
+          await sendPushToUsers(otherUserIds, {
+            title: 'Görev tamamlandı',
+            body: `${req.user!.username} bir görevi tamamladı.`,
+            data: { type: 'task_completed', groupId },
+          });
+
+          // 2) Event completed (to everyone)
+          if (completed >= group.targetCount) {
+            await sendPushToUsers(allUserIds, {
+              title: 'Etkinlik tamamlandı',
+              body: `"${group.title}" etkinliği tamamlandı. Allah kabul etsin.`,
+              data: { type: 'event_completed', groupId },
+            });
+          }
+        } catch (e) {
+          console.warn('Push notification skipped (non-fatal):', e);
+        }
+      })();
 
       res.status(200).json({
         message: 'Numbered assignment completed successfully',
@@ -587,6 +654,36 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
         currentProgress: completedProgress,
       },
     });
+
+    // Push notifications (non-blocking)
+    void (async () => {
+      try {
+        const memberships = await prisma.groupMember.findMany({
+          where: { groupId },
+          select: { userId: true },
+        });
+        const allUserIds = memberships.map(m => m.userId);
+        const otherUserIds = allUserIds.filter(id => id !== req.user!.userId);
+
+        // 1) Task completed (to others)
+        await sendPushToUsers(otherUserIds, {
+          title: 'Görev tamamlandı',
+          body: `${updatedTask.assignee?.username ?? req.user!.username} bir görevi tamamladı.`,
+          data: { type: 'task_completed', groupId, taskId: updatedTask.id },
+        });
+
+        // 2) Event completed (to everyone)
+        if (completedProgress >= task.group.targetCount) {
+          await sendPushToUsers(allUserIds, {
+            title: 'Etkinlik tamamlandı',
+            body: `"${task.group.title}" etkinliği tamamlandı. Allah kabul etsin.`,
+            data: { type: 'event_completed', groupId },
+          });
+        }
+      } catch (e) {
+        console.warn('Push notification skipped (non-fatal):', e);
+      }
+    })();
 
     res.status(200).json({
       message: 'Task completed successfully',

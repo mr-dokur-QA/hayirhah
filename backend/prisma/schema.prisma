@@ -23,6 +23,7 @@ model User {
   notificationPrefs NotificationPreference?
   prayerTrackings   PrayerTracking[]
   refreshTokens     RefreshToken[]
+  deviceTokens      DeviceToken[]
   assignedTasks     Task[]                  @relation("TaskAssignee")
   numberedTaskAssignments NumberedTaskAssignment[] @relation("NumberedTaskAssignee")
 
@@ -147,6 +148,21 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  lastSeenAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
 }
 
 model SystemSetting {
