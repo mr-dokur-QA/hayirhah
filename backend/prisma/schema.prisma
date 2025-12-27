@@ -101,6 +101,7 @@ model Task {
 }
 
 // For numbered tasks (tefriciye, 1000_ihlas) - tracks user progress without creating individual tasks
+// Her görev alımı ayrı bir kayıt olarak tutulur
 model NumberedTaskAssignment {
   id            String   @id @default(cuid())
   groupId       String
@@ -108,14 +109,16 @@ model NumberedTaskAssignment {
   userUsername  String?
   assignedCount Int      @default(0)  // How many items user committed to complete
   completedCount Int     @default(0)  // How many items user actually completed
+  isCompleted   Boolean  @default(false)  // Bu görev tamamlandı mı
   assignedAt    DateTime @default(now())
+  completedAt   DateTime?  // Tamamlanma zamanı
   updatedAt     DateTime @updatedAt
   user          User     @relation("NumberedTaskAssignee", fields: [userId], references: [id], onDelete: Cascade)
   group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  @@unique([groupId, userId])
   @@index([groupId])
   @@index([userId])
+  @@index([groupId, userId])
   @@map("numbered_task_assignments")
 }
 

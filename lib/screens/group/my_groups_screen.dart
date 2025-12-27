@@ -18,12 +18,60 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
   final _storageService = StorageService();
   final _apiService = ApiService();
   List<Group> _groups = [];
+  List<Group> _filteredGroups = [];
   bool _isLoading = true;
+  String? _selectedTypeFilter; // null = tümü
+
+  // Etkinlik türleri
+  final Map<String, String> _typeNames = {
+    'hatim': 'Hatim',
+    'tefriciye': 'Tefriciye',
+    'fetih': 'Fetih',
+    'yasin': 'Yasin',
+    'cevsen': 'Cevşen',
+    '1000_ihlas': '1000 İhlas',
+  };
 
   @override
   void initState() {
     super.initState();
     _loadUserGroups();
+  }
+
+  // Kalan gün hesapla
+  int? _getRemainingDays(Group group) {
+    if (group.deadline == null) return null;
+    final now = DateTime.now();
+    final deadline = group.deadline!;
+    final difference = deadline.difference(DateTime(now.year, now.month, now.day)).inDays;
+    return difference;
+  }
+
+  // Etkinlikleri filtrele ve sırala
+  void _applyFilterAndSort() {
+    List<Group> filtered = _groups;
+    
+    // Türe göre filtrele
+    if (_selectedTypeFilter != null) {
+      filtered = filtered.where((g) => g.type == _selectedTypeFilter).toList();
+    }
+    
+    // Kalan güne göre sırala (en az kalan önce, null deadline'lar sona)
+    filtered.sort((a, b) {
+      final daysA = _getRemainingDays(a);
+      final daysB = _getRemainingDays(b);
+      
+      // Deadline olmayanlar sona
+      if (daysA == null && daysB == null) return 0;
+      if (daysA == null) return 1;
+      if (daysB == null) return -1;
+      
+      return daysA.compareTo(daysB);
+    });
+    
+    setState(() {
+      _filteredGroups = filtered;
+    });
   }
 
   Future<void> _loadUserGroups() async {
@@ -85,6 +133,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             _groups = groups;
             _isLoading = false;
           });
+          _applyFilterAndSort();
           return;
         }
       }
@@ -95,6 +144,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         _groups = groups;
         _isLoading = false;
       });
+      _applyFilterAndSort();
     } catch (e) {
         print('API call failed for user groups: $e');
 
@@ -122,6 +172,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
           _groups = groups;
           _isLoading = false;
         });
+        _applyFilterAndSort();
       } catch (localError) {
         setState(() {
           _isLoading = false;
@@ -169,7 +220,12 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _groups.isEmpty
                 ? _buildEmptyState()
-                : _buildGroupsList(),
+                : Column(
+                    children: [
+                      _buildFilterChips(),
+                      Expanded(child: _buildGroupsList()),
+                    ],
+                  ),
       ),
       // Show floating action button only when there are groups
       floatingActionButton: _groups.isNotEmpty ? FloatingActionButton(
@@ -187,6 +243,62 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         child: const Icon(Icons.add, color: Colors.white),
         tooltip: 'Yeni Etkinlik Oluştur',
       ) : null,
+    );
+  }
+
+  Widget _buildFilterChips() {
+    // Mevcut etkinlik türlerini bul
+    final availableTypes = _groups.map((g) => g.type).toSet().toList();
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // Tümü chip'i
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: const Text('Tümü'),
+                selected: _selectedTypeFilter == null,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedTypeFilter = null;
+                  });
+                  _applyFilterAndSort();
+                },
+                selectedColor: Theme.of(context).primaryColor.withAlpha(50),
+                checkmarkColor: Theme.of(context).primaryColor,
+              ),
+            ),
+            // Etkinlik türü chip'leri
+            ...availableTypes.map((type) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                avatar: Icon(
+                  _getTypeIcon(type),
+                  size: 18,
+                  color: _selectedTypeFilter == type ? Colors.white : _getTypeColor(type),
+                ),
+                label: Text(_typeNames[type] ?? type),
+                selected: _selectedTypeFilter == type,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedTypeFilter = selected ? type : null;
+                  });
+                  _applyFilterAndSort();
+                },
+                selectedColor: _getTypeColor(type),
+                labelStyle: TextStyle(
+                  color: _selectedTypeFilter == type ? Colors.white : null,
+                ),
+                checkmarkColor: Colors.white,
+              ),
+            )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -270,13 +382,39 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
   }
 
   Widget _buildGroupsList() {
+    if (_filteredGroups.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.filter_list_off, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Bu filtreye uygun etkinlik yok',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedTypeFilter = null;
+                });
+                _applyFilterAndSort();
+              },
+              child: const Text('Filtreyi Temizle'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _groups.length,
+      itemCount: _filteredGroups.length,
       // PERFORMANCE: cacheExtent improves scroll performance for long lists
       cacheExtent: 300,
       itemBuilder: (context, index) {
-        final group = _groups[index];
+        final group = _filteredGroups[index];
         // PERFORMANCE: ValueKey enables efficient widget diffing
         return KeyedSubtree(
           key: ValueKey(group.id),
@@ -291,7 +429,6 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     final progress = group.targetCount > 0 
         ? (group.currentProgress / group.targetCount) * 100 
         : 0.0;
-    final isLocal = group.inviteCode.length == 6 || int.tryParse(group.id) != null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -365,24 +502,6 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                                 ),
                               ),
                             if (isCreator) const SizedBox(width: 8),
-                            if (isLocal) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Yerel',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.orange.shade800,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
                             Text(
                               '${group.participantIds.length} katılımcı',
                               style: TextStyle(
@@ -464,27 +583,71 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
               
               if (group.deadline != null) ...[
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 16,
-                      color: Colors.orange[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Son tarih: ${StorageService.formatDateTurkish(group.deadline!)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange[600],
-                      ),
-                    ),
-                  ],
-                ),
+                _buildRemainingDaysWidget(group),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRemainingDaysWidget(Group group) {
+    final remainingDays = _getRemainingDays(group);
+    if (remainingDays == null) return const SizedBox.shrink();
+    
+    Color color;
+    IconData icon;
+    String text;
+    
+    if (remainingDays < 0) {
+      // Süresi geçmiş
+      color = Colors.red;
+      icon = Icons.warning;
+      text = '${remainingDays.abs()} gün gecikmiş';
+    } else if (remainingDays == 0) {
+      // Bugün son gün
+      color = Colors.red;
+      icon = Icons.alarm;
+      text = 'Bugün son gün!';
+    } else if (remainingDays <= 3) {
+      // 3 gün veya daha az
+      color = Colors.orange;
+      icon = Icons.schedule;
+      text = '$remainingDays gün kaldı';
+    } else if (remainingDays <= 7) {
+      // 1 hafta veya daha az
+      color = Colors.amber.shade700;
+      icon = Icons.schedule;
+      text = '$remainingDays gün kaldı';
+    } else {
+      // 1 haftadan fazla
+      color = Colors.green;
+      icon = Icons.schedule;
+      text = '$remainingDays gün kaldı';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(25),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withAlpha(100)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
