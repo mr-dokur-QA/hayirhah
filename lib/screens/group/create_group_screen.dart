@@ -223,28 +223,30 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               ),
             );
           }
+          return; // Hata durumunda yerel fallback'e düşme
         }
       }
       
+      // NOT: Yerel etkinlik oluşturma devre dışı - sadece API üzerinden çalışır
       // Fallback to local storage (fast path when offline or API fails)
-      if (mounted) {
-        final group = await _storageService.createGroup(
-          title: title,
-          description: description,
-          type: _selectedTemplate!,
-          targetCount: targetCount,
-          isPrivate: true, // Tüm etkinlikler özel
-          deadline: _deadline!,
-        );
-
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${group.title} başarıyla oluşturuldu! (Yerel)'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      // if (mounted) {
+      //   final group = await _storageService.createGroup(
+      //     title: title,
+      //     description: description,
+      //     type: _selectedTemplate!,
+      //     targetCount: targetCount,
+      //     isPrivate: true, // Tüm etkinlikler özel
+      //     deadline: _deadline!,
+      //   );
+      //
+      //   Navigator.pop(context, true);
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     SnackBar(
+      //       content: Text('${group.title} başarıyla oluşturuldu! (Yerel)'),
+      //       backgroundColor: Colors.orange,
+      //     ),
+      //   );
+      // }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

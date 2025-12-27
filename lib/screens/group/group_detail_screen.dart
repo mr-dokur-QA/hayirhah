@@ -195,8 +195,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _assignTask(Task task) async {
     if (_currentUser == null) return;
 
-    // Tefriciye, Yasin, Fetih, Cevsen ve 1000 İhlas için dinamik görev atama
-    if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih' || _group?.type == 'cevsen' || _group?.type == '1000_ihlas') {
+    // Tefriciye, Yasin, Fetih ve 1000 İhlas için dinamik görev atama
+    // NOT: Cevşen hatim gibi çalışır - bab seçince direkt atanır
+    if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih' || _group?.type == '1000_ihlas') {
       _showDynamicTaskAssignmentDialog();
       return;
     }
@@ -1388,7 +1389,8 @@ Hayırlı olsun!
   }
 
   Widget _buildTasksList() {
-    // Tefriciye, Yasin, Fetih, 1000 İhlas için özel gösterim (Cevsen artık grid kullanıyor)
+    // Tefriciye, Yasin, Fetih, 1000 İhlas için özel gösterim
+    // NOT: Cevsen ve Hatim grid kullanıyor - bab/cüz seçince direkt atanır
     if (_group?.type == 'tefriciye' || _group?.type == 'yasin' || _group?.type == 'fetih' || _group?.type == '1000_ihlas') {
       return Column(
         children: [
