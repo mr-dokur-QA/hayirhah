@@ -36,6 +36,21 @@ type PushPayload = {
   data?: Record<string, string>;
 };
 
+function groupTypeLabel(type: string): string {
+  const t = (type || '').toLowerCase();
+  const map: Record<string, string> = {
+    fetih: 'Fetih',
+    yasin: 'Yasin',
+    tefriciye: 'Tefriciye',
+    hatim: 'Hatim',
+    cevsen: 'Cevşen',
+    '1000_ihlas': '1000 İhlas',
+    custom_parca: 'Parça',
+    custom_sayi: 'Sayı',
+  };
+  return map[t] ?? (type || 'Etkinlik');
+}
+
 async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<void> {
   const app = getFirebaseAdmin();
   if (!app) return;
@@ -558,17 +573,17 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
 
           // 1) Task completed (to others)
           await sendPushToUsers(otherUserIds, {
-            title: 'Görev tamamlandı',
+            title: `${groupTypeLabel(group.type)} Etkinliği`,
             body: `${req.user!.username} bir görevi tamamladı.`,
-            data: { type: 'task_completed', groupId },
+            data: { type: 'task_completed', groupId, groupType: group.type },
           });
 
           // 2) Event completed (to everyone)
           if (completed >= group.targetCount) {
             await sendPushToUsers(allUserIds, {
-              title: 'Etkinlik tamamlandı',
-              body: `"${group.title}" etkinliği tamamlandı. Allah kabul etsin.`,
-              data: { type: 'event_completed', groupId },
+              title: `${groupTypeLabel(group.type)} Etkinliği`,
+              body: `${group.title} tamamlandı, Allah kabul etsin.`,
+              data: { type: 'event_completed', groupId, groupType: group.type },
             });
           }
         } catch (e) {
@@ -679,17 +694,17 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
 
         // 1) Task completed (to others)
         await sendPushToUsers(otherUserIds, {
-          title: 'Görev tamamlandı',
+          title: `${groupTypeLabel(task.group.type)} Etkinliği`,
           body: `${updatedTask.assignee?.username ?? req.user!.username} bir görevi tamamladı.`,
-          data: { type: 'task_completed', groupId, taskId: updatedTask.id },
+          data: { type: 'task_completed', groupId, taskId: updatedTask.id, groupType: task.group.type },
         });
 
         // 2) Event completed (to everyone)
         if (completedProgress >= task.group.targetCount) {
           await sendPushToUsers(allUserIds, {
-            title: 'Etkinlik tamamlandı',
-            body: `"${task.group.title}" etkinliği tamamlandı. Allah kabul etsin.`,
-            data: { type: 'event_completed', groupId },
+            title: `${groupTypeLabel(task.group.type)} Etkinliği`,
+            body: `${task.group.title} tamamlandı, Allah kabul etsin.`,
+            data: { type: 'event_completed', groupId, groupType: task.group.type },
           });
         }
       } catch (e) {

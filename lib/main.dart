@@ -9,6 +9,7 @@ import 'services/storage_service.dart';
 import 'services/location_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'services/notification_service.dart';
+import 'services/app_navigator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,7 @@ class _DuaKardeslikAppState extends State<DuaKardeslikApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Hayırhah',
+      navigatorKey: appNavigatorKey,
       theme: _themeService.lightTheme,
       darkTheme: _themeService.darkTheme,
       themeMode: _themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,

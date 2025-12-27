@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
 
 import 'api_service.dart';
+import 'app_navigator.dart';
 
 /// Top-level background handler (required by firebase_messaging).
 /// Keep this function outside any class.
@@ -45,7 +47,12 @@ class NotificationService {
       iOS: iosInit,
     );
 
-    await _local.initialize(initSettings);
+    await _local.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (response) {
+        _handleTapPayload(response.payload);
+      },
+    );
 
     // Ask notification permissions (iOS + Android 13+ is handled by plugin runtime too)
     await requestPermissions();
@@ -59,6 +66,20 @@ class NotificationService {
 
     // Listen for foreground messages and show a local notification.
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+
+    // Handle notification taps (app in background)
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      debugPrint('🔔 onMessageOpenedApp: ${message.messageId} data=${message.data}');
+      _handleRemoteMessageTap(message);
+    });
+
+    // Handle notification taps (cold start)
+    // ignore: unawaited_futures
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message == null) return;
+      debugPrint('🔔 getInitialMessage: ${message.messageId} data=${message.data}');
+      _handleRemoteMessageTap(message);
+    });
 
     // Keep backend token registration up-to-date.
     _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
@@ -204,7 +225,36 @@ class NotificationService {
       title,
       body,
       details,
-      payload: message.data.isNotEmpty ? message.data.toString() : null,
+      payload: message.data.isNotEmpty ? jsonEncode(message.data) : null,
     );
+  }
+
+  void _handleRemoteMessageTap(RemoteMessage message) {
+    if (message.data.isEmpty) return;
+    final groupId = message.data['groupId']?.toString();
+    final kind = message.data['type']?.toString();
+    debugPrint('➡️ Notification tap: type=$kind groupId=$groupId');
+    if (groupId != null && groupId.isNotEmpty) {
+      // ignore: unawaited_futures
+      openGroupDetailFromNotification(groupId);
+    }
+  }
+
+  void _handleTapPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        final groupId = decoded['groupId']?.toString();
+        final kind = decoded['type']?.toString();
+        debugPrint('➡️ Local notification tap: type=$kind groupId=$groupId');
+        if (groupId != null && groupId.isNotEmpty) {
+          // ignore: unawaited_futures
+          openGroupDetailFromNotification(groupId);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to parse notification payload: $e');
+    }
   }
 }
