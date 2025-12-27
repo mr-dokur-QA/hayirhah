@@ -33,7 +33,7 @@ export const registerDeviceToken = async (req: Request, res: Response): Promise<
         where: { token },
         data: {
           userId: req.user.userId,
-          platform: platform ?? existing.platform,
+          ...(platform !== undefined ? { platform } : {}),
           lastSeenAt: new Date(),
         },
       });
@@ -45,7 +45,7 @@ export const registerDeviceToken = async (req: Request, res: Response): Promise<
       data: {
         userId: req.user.userId,
         token,
-        platform,
+        ...(platform !== undefined ? { platform } : {}),
         lastSeenAt: new Date(),
       },
     });

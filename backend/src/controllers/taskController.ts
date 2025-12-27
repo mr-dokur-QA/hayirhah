@@ -47,21 +47,33 @@ async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise
     select: { token: true },
   });
 
-  const uniqueTokens = Array.from(new Set(tokens.map(t => t.token))).filter(Boolean);
+  const uniqueTokens: string[] = Array.from(new Set(tokens.map((t) => t.token))).filter(
+    (t): t is string => typeof t === 'string' && t.length > 0
+  );
   if (!uniqueTokens.length) return;
 
   // FCM multicast supports up to 500 tokens per call
   const chunkSize = 500;
   for (let i = 0; i < uniqueTokens.length; i += chunkSize) {
     const chunk = uniqueTokens.slice(i, i + chunkSize);
-    await admin.messaging().sendEachForMulticast({
-      tokens: chunk,
-      notification: {
-        title: payload.title,
-        body: payload.body,
-      },
-      data: payload.data,
-    });
+    await admin.messaging().sendEachForMulticast(
+      payload.data
+        ? {
+            tokens: chunk,
+            notification: {
+              title: payload.title,
+              body: payload.body,
+            },
+            data: payload.data,
+          }
+        : {
+            tokens: chunk,
+            notification: {
+              title: payload.title,
+              body: payload.body,
+            },
+          }
+    );
   }
 }
 
