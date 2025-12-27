@@ -164,8 +164,7 @@ lib/
 │   ├── task.dart               # Görev modeli
 │   ├── arabic_text.dart        # Arapça metin modeli
 │   ├── prayer_tracking.dart    # İbadet takip modeli
-│   ├── prayer_times.dart       # Namaz vakitleri modeli
-│   ├── misafir.dart           # Misafir modeli
+│   ├── azan_sound.dart         # Ezan ses modeli
 │   └── notification_preferences.dart # Bildirim ayarları
 ├── screens/                     # Ekran widget'ları
 │   ├── auth/
@@ -181,9 +180,7 @@ lib/
 │   ├── prayer_tracking/
 │   │   └── ibadet_takip_screen.dart # İbadet takip (YENİ)
 │   ├── prayer/
-│   │   └── prayer_times_screen.dart # Namaz vakitleri (YENİ)
-│   ├── misafir/
-│   │   └── misafir_screen.dart # Misafir sistemi (YENİ)
+│   │   └── prayer_times_screen.dart # Namaz vakitleri
 │   ├── qibla/
 │   │   └── qibla_finder_screen.dart # Kıble bulucu
 │   ├── settings/
@@ -209,9 +206,8 @@ lib/
 ### Ana Özellikler (Büyük Kartlar):
 1. **📿 İbadet Takip:** Namaz takibi ve istatistikler
 2. **⏰ Namaz Vakitleri:** Günlük namaz saatleri
-3. **🏠 Misafir:** Misafir durumu kayıtları
-4. **🔵 Etkinlik Oluştur:** Dua grubu oluşturma ve yönetme
-5. **🟢 Kıble Bulucu:** Namaz yönü bulma ve pusula
+3. **🔵 Etkinlik Oluştur:** Dua grubu oluşturma ve yönetme
+4. **🟢 Kıble Bulucu:** Namaz yönü bulma ve pusula
 
 ### Diğer Özellikler:
 - **Gruba Katıl:** QR kod ile grup katılımı
@@ -292,11 +288,10 @@ graph LR
     A[Giriş Ekranı] --> B[Dashboard]
     B --> C[İbadet Takip]
     B --> D[Namaz Vakitleri]
-    B --> E[Misafir Sistemi]
-    B --> F[Kıble Bulucu]
-    B --> G[Grup Etkinlikleri]
-    B --> H[Metin Okuma]
-    B --> I[Ayarlar]
+    B --> E[Kıble Bulucu]
+    B --> F[Grup Etkinlikleri]
+    B --> G[Metin Okuma]
+    B --> H[Ayarlar]
     
     C --> C1[Günlük Takip]
     C --> C2[Haftalık İstatistik]
@@ -319,7 +314,6 @@ graph LR
 erDiagram
     USER ||--o{ PRAYER_TRACKING : tracks
     USER ||--o{ GROUP_MEMBERSHIP : joins
-    USER ||--o{ MISAFIR_RECORD : records
     
     GROUP ||--o{ GROUP_MEMBERSHIP : has
     GROUP ||--o{ TASK : contains
@@ -365,12 +359,6 @@ erDiagram
         string assignedUserId
     }
     
-    MISAFIR_RECORD {
-        string id
-        string userId
-        date date
-        bool isMisafir
-    }
 ```
 
 ## Güncelleme Geçmişi
@@ -388,7 +376,6 @@ erDiagram
 - **v1.2.0:** 
   - **İbadet Takip Sistemi:** 9 namaz takibi (5 farz + 4 sünnet)
   - **Namaz Vakitleri:** Günlük namaz saatleri ve ezan sesleri
-  - **Misafir Sistemi:** Günlük misafir durumu kayıtları
   - **Türkçe Yerelleştirme:** Tam Türkçe tarih formatları
   - **Ayarlar Sayfası:** Uygulama ayarları ve tema yönetimi
   - **Uygulama Adı Değişikliği:** "Dua Kardeşliği" → "Hayırhah"
@@ -407,4 +394,4 @@ erDiagram
 
 ---
 
-*Bu dosya, uygulama geliştirildikçe düzenli olarak güncellenecektir.* 
+*Bu dosya, uygulama geliştirildikçe düzenli olarak güncellenecektir..* 

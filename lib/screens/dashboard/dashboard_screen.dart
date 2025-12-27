@@ -6,6 +6,7 @@ import '../qibla/qibla_finder_screen.dart';
 import '../settings/settings_screen.dart';
 import '../prayer/prayer_times_screen.dart';
 import '../prayer_tracking/ibadet_takip_screen.dart';
+import '../ai_report/ai_report_screen.dart';
 import '../../services/prayer_times_service.dart';
 import '../../services/prayer_tracking_service.dart';
 
@@ -200,6 +201,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
 
               const SizedBox(height: 12),
+
+              // AI Prayer Report button
+              _buildSecondaryButton(
+                context,
+                title: 'Namaz Raporu',
+                subtitle: 'Hesaba çekilmeden kendimizi hesaba çekelim',
+                icon: Icons.auto_awesome,
+                color: Colors.amber.shade700,
+                onTap: () => _navigateToAIReport(context),
+              ),
 
               const SizedBox(height: 32),
             ],
@@ -404,6 +415,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const IbadetTakipScreen()),
+    );
+  }
+
+  void _navigateToAIReport(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AIReportScreen()),
     );
   }
 

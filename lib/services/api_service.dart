@@ -316,6 +316,25 @@ class ApiService {
     }
   }
 
+  /// Get all prayer tracking records for the current user
+  Future<List<Map<String, dynamic>>?> getAllPrayerRecords() async {
+    try {
+      final response = await _client.get('$_prayerTracking/all');
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'];
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+        return [];
+      }
+      return null;
+    } on DioException catch (e) {
+      _handleError('Get all prayer records', e);
+      return null;
+    }
+  }
+
   // ==================== Health Check ====================
 
   /// Check backend connection status

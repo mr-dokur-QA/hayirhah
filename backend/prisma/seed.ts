@@ -86,13 +86,6 @@ async function main(): Promise<void> {
           aksam: 0,
           yatsi: 3,
         },
-        healthData: {
-          waterIntake: 2.5,
-          exerciseHours: 1,
-          quranPages: 5,
-          oralHygiene: true,
-          readingHours: 2,
-        },
       },
       {
         userId: testUser1.id,
@@ -116,13 +109,6 @@ async function main(): Promise<void> {
           ikindi: 0,
           aksam: 0,
           yatsi: 3,
-        },
-        healthData: {
-          waterIntake: 3.0,
-          exerciseHours: 0.5,
-          quranPages: 8,
-          oralHygiene: true,
-          readingHours: 1.5,
         },
       },
     ],

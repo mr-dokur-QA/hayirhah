@@ -18,6 +18,7 @@ import { notFound } from './middleware/notFound';
 import authRoutes from './routes/auth';
 import prayerTrackingRoutes from './routes/prayerTracking';
 import groupRoutes from './routes/groups';
+import aiReportRoutes from './routes/aiReport';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,14 +26,13 @@ const PORT = process.env.PORT || 3000;
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - Allow all origins for Flutter Web compatibility
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      `${process.env.MOBILE_APP_SCHEME || 'hayirhah'}://`,
-    ],
+    origin: true, // Allow all origins (Flutter Web runs on dynamic ports)
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   })
 );
 
@@ -47,34 +47,19 @@ if (process.env.NODE_ENV !== 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint
-app.get('/health', async (_req, res) => {
-  try {
-    // Test database connection
-    const { prisma } = await import('./config/database');
-    await prisma.$queryRaw`SELECT 1`;
-    
-    res.status(200).json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      database: 'connected',
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      database: 'disconnected',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
+// Health check endpoint - simple and fast for Railway
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/prayer-tracking', prayerTrackingRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/ai-report', aiReportRoutes);
 
 // Error handling middleware
 app.use(notFound);

@@ -104,10 +104,11 @@ export const getGroupTasks = async (req: Request, res: Response): Promise<void> 
         groupId: a.groupId,
         taskIndex: idx + 1,
         assignedTo: a.userId,
-        status: a.completedCount >= a.assignedCount ? 'completed' : 'assigned',
+        assignedToUsername: a.userUsername,
+        status: a.isCompleted ? 'completed' : 'assigned',
         amount: a.assignedCount,
         assignedAt: a.assignedAt,
-        completedAt: a.completedCount >= a.assignedCount ? a.updatedAt : null,
+        completedAt: a.isCompleted ? a.completedAt : null,
         assignee: a.user,
       }));
 
@@ -288,23 +289,15 @@ export const assignTask = async (req: Request, res: Response): Promise<void> => 
         return;
       }
 
-      const assignment = await prisma.numberedTaskAssignment.upsert({
-        where: {
-          groupId_userId: {
-            groupId,
-            userId: req.user.userId,
-          },
-        },
-        update: {
-          assignedCount: { increment: amount },
-          userUsername: req.user.username,
-        },
-        create: {
+      // Her görev alımı ayrı bir kayıt olarak oluşturulur
+      const assignment = await prisma.numberedTaskAssignment.create({
+        data: {
           groupId,
           userId: req.user.userId,
           userUsername: req.user.username,
           assignedCount: amount,
           completedCount: 0,
+          isCompleted: false,
         },
       });
 
@@ -472,18 +465,32 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
         return;
       }
 
+      if (assignment.isCompleted) {
+        res.status(400).json({
+          error: 'Already completed',
+          message: 'This assignment has already been completed',
+        });
+        return;
+      }
+
       const updatedAssignment = await prisma.numberedTaskAssignment.update({
         where: { id: assignment.id },
         data: {
           completedCount: assignment.assignedCount,
+          isCompleted: true,
+          completedAt: new Date(),
         },
       });
 
+      // Tüm tamamlanan görevlerin toplamını hesapla
       const totals = await prisma.numberedTaskAssignment.aggregate({
-        where: { groupId },
-        _sum: { completedCount: true },
+        where: { 
+          groupId,
+          isCompleted: true,
+        },
+        _sum: { assignedCount: true },
       });
-      const completed = totals._sum.completedCount ?? 0;
+      const completed = totals._sum.assignedCount ?? 0;
 
       await prisma.group.update({
         where: { id: groupId },
@@ -556,17 +563,28 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
     });
 
     // Update group progress
-    const completedCount = await prisma.task.count({
+    // Cevşen için amount toplamını hesapla, diğerleri için görev sayısını
+    const completedTasks = await prisma.task.findMany({
       where: {
         groupId,
         status: 'completed',
       },
+      select: {
+        amount: true,
+      },
     });
+
+    // Eğer görevlerde amount varsa (cevşen gibi), toplamı al
+    // Yoksa (hatim gibi), görev sayısını al
+    const hasAmount = completedTasks.some(t => t.amount != null && t.amount > 0);
+    const completedProgress = hasAmount 
+      ? completedTasks.reduce((sum, t) => sum + (t.amount ?? 0), 0)
+      : completedTasks.length;
 
     await prisma.group.update({
       where: { id: groupId },
       data: {
-        currentProgress: completedCount,
+        currentProgress: completedProgress,
       },
     });
 

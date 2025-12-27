@@ -41,7 +41,6 @@ dependencies:
   flutter_compass: ^0.8.0
   permission_handler: ^11.1.0
   geocoding: ^3.0.0
-  http: ^1.1.0
   dio: ^5.4.0
   connectivity_plus: ^5.0.2
   intl: ^0.19.0

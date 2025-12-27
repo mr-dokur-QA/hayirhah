@@ -404,4 +404,166 @@ class PrayerTrackingService extends ChangeNotifier {
   Future<void> initialize() async {
     await loadFromStorage();
   }
+
+  /// Sync prayer tracking data from backend
+  /// This is called after login to restore user's data from the server
+  Future<bool> syncFromBackend() async {
+    try {
+      final currentUser = _storageService.currentUser;
+      if (currentUser == null) {
+        debugPrint('PrayerTrackingService: No current user, skipping sync');
+        return false;
+      }
+
+      final token = await _storageService.getAuthToken();
+      if (token == null) {
+        debugPrint('PrayerTrackingService: No auth token, skipping sync');
+        return false;
+      }
+
+      _apiService.setAuthToken(token);
+      
+      final records = await _apiService.getAllPrayerRecords();
+      if (records == null || records.isEmpty) {
+        debugPrint('PrayerTrackingService: No records from backend or fetch failed');
+        return false;
+      }
+
+      debugPrint('PrayerTrackingService: Fetched ${records.length} records from backend');
+
+      // Merge backend records with local records
+      // Backend records take precedence for existing dates
+      for (final record in records) {
+        try {
+          final dateStr = record['date'];
+          if (dateStr == null) continue;
+
+          // Parse the date - backend returns ISO format
+          DateTime date;
+          if (dateStr is String) {
+            date = DateTime.parse(dateStr);
+          } else {
+            continue;
+          }
+
+          final dayKey = _getDayKey(currentUser.id, date);
+          
+          // Convert backend format to DailyPrayerTracking
+          final dailyRecord = _convertBackendRecord(record, currentUser.id, date);
+          if (dailyRecord != null) {
+            _dailyRecords[dayKey] = dailyRecord;
+          }
+        } catch (e) {
+          debugPrint('PrayerTrackingService: Error parsing record: $e');
+        }
+      }
+
+      // Save merged data to local storage
+      await _saveToStorage();
+      notifyListeners();
+
+      debugPrint('PrayerTrackingService: Sync completed successfully');
+      return true;
+    } catch (e) {
+      debugPrint('PrayerTrackingService: Sync error: $e');
+      return false;
+    }
+  }
+
+  /// Normalize prayer name to backend key format
+  String _normalizePrayerNameToKey(String prayerName) {
+    final lower = prayerName.trim().toLowerCase();
+    // Handle Turkish diacritics and common variants
+    if (lower == 'öğle' || lower == 'ogle') return 'ogle';
+    if (lower == 'akşam' || lower == 'aksam') return 'aksam';
+    if (lower == 'yatsı' || lower == 'yatsi') return 'yatsi';
+    if (lower == 'sabah') return 'sabah';
+    if (lower == 'ikindi' || lower == 'İkindi') return 'ikindi';
+    return lower;
+  }
+
+  /// Convert backend record format to DailyPrayerTracking
+  DailyPrayerTracking? _convertBackendRecord(
+    Map<String, dynamic> record,
+    String userId,
+    DateTime date,
+  ) {
+    try {
+      // Start with default record
+      var result = _createDefaultDayRecord(userId, date);
+      
+      // Parse fard prayers from backend
+      final fardPrayers = record['fardPrayers'];
+      debugPrint('PrayerTrackingService: Parsing fardPrayers: $fardPrayers');
+      if (fardPrayers is Map) {
+        final prayers = List<PrayerRecord>.from(result.prayers);
+        
+        for (final prayer in prayers) {
+          // Use prayer name to find the matching backend key
+          final backendKey = _normalizePrayerNameToKey(prayer.prayerName);
+          final backendPrayer = fardPrayers[backendKey];
+          debugPrint('PrayerTrackingService: Prayer ${prayer.prayerName} -> key: $backendKey, backendData: $backendPrayer');
+          if (backendPrayer is Map) {
+            final index = prayers.indexWhere((p) => p.id == prayer.id);
+            if (index != -1) {
+              prayers[index] = prayer.copyWith(
+                isCompleted: backendPrayer['isCompleted'] == true,
+                completedSunnet: backendPrayer['completedSunnet'] == true,
+                completedTesbihat: backendPrayer['completedTesbihat'] == true,
+              );
+              debugPrint('PrayerTrackingService: Updated prayer ${prayer.prayerName} - isCompleted: ${backendPrayer['isCompleted']}');
+            }
+          }
+        }
+        
+        result = result.copyWith(prayers: prayers);
+      }
+
+      // Parse sunnah prayers
+      final sunnahPrayers = record['sunnahPrayers'];
+      if (sunnahPrayers is Map) {
+        final additionalPrayers = result.additionalPrayers.copyWith(
+          teheccud: sunnahPrayers['teheccud'] == true,
+          duha: sunnahPrayers['duha'] == true,
+          evvabin: sunnahPrayers['evvabin'] == true,
+          tespih: sunnahPrayers['tespih'] == true,
+        );
+        result = result.copyWith(additionalPrayers: additionalPrayers);
+      }
+
+      // Parse kaza prayers
+      final kazaPrayers = record['kazaPrayers'];
+      if (kazaPrayers is Map) {
+        final kazaMap = <String, int>{};
+        // Map backend keys to local Turkish keys
+        final keyMapping = {
+          'sabah': 'sabah',
+          'ogle': 'öğle',
+          'ikindi': 'ikindi',
+          'aksam': 'akşam',
+          'yatsi': 'yatsı',
+        };
+        kazaPrayers.forEach((key, value) {
+          final localKey = keyMapping[key] ?? key;
+          if (value is int) {
+            kazaMap[localKey] = value;
+          } else if (value is num) {
+            kazaMap[localKey] = value.toInt();
+          }
+        });
+        
+        if (kazaMap.isNotEmpty) {
+          final additionalPrayers = result.additionalPrayers.copyWith(
+            kazaPrayers: kazaMap,
+          );
+          result = result.copyWith(additionalPrayers: additionalPrayers);
+        }
+      }
+
+      return result;
+    } catch (e) {
+      debugPrint('PrayerTrackingService: Error converting record: $e');
+      return null;
+    }
+  }
 } 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../services/prayer_tracking_service.dart';
 import '../../models/user.dart';
 import '../dashboard/dashboard_screen.dart';
 
@@ -18,7 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _storageService = StorageService();
   final _apiService = ApiService();
   bool _isLoading = false;
-  bool _isGoogleLoading = false;
   bool _isRegisterMode = false;
 
   @override
@@ -47,6 +47,13 @@ class _LoginScreenState extends State<LoginScreen> {
             );
             _storageService.setCurrentUser(user);
             await _storageService.saveCurrentUserId(user.id);
+          }
+          // Sync prayer tracking data from backend (for auto-login)
+          try {
+            final prayerTrackingService = PrayerTrackingService();
+            await prayerTrackingService.syncFromBackend();
+          } catch (e) {
+            debugPrint('Prayer tracking sync error (non-critical): $e');
           }
           // Token is valid, navigate to dashboard
           Navigator.pushReplacement(
@@ -114,6 +121,14 @@ class _LoginScreenState extends State<LoginScreen> {
             createdAt: DateTime.parse(userData['createdAt'] ?? DateTime.now().toIso8601String()),
           );
           _storageService.setCurrentUser(user);
+        }
+
+        // Sync prayer tracking data from backend after successful login
+        try {
+          final prayerTrackingService = PrayerTrackingService();
+          await prayerTrackingService.syncFromBackend();
+        } catch (e) {
+          debugPrint('Prayer tracking sync error (non-critical): $e');
         }
 
         Navigator.pushReplacement(
@@ -214,6 +229,14 @@ class _LoginScreenState extends State<LoginScreen> {
           _storageService.setCurrentUser(user);
         }
 
+        // Sync prayer tracking data from backend after successful registration
+        try {
+          final prayerTrackingService = PrayerTrackingService();
+          await prayerTrackingService.syncFromBackend();
+        } catch (e) {
+          debugPrint('Prayer tracking sync error (non-critical): $e');
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -251,36 +274,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isGoogleLoading = true;
-    });
-
-    try {
-      final user = await _storageService.signInWithGoogle();
-
-      if (user != null && mounted) {
-        // Set current user in storage service
-        _storageService.setCurrentUser(user);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google ile giriş hatası: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isGoogleLoading = false;
-        });
-      }
-    }
-  }
+  // Google Sign-In disabled for now - uncomment when Firebase is configured
+  // Future<void> _signInWithGoogle() async {
+  //   // ... implementation
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -387,57 +384,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
 
-                // Divider
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey[400])),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'veya',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey[400])),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Google Sign-In button
-                OutlinedButton.icon(
-                  onPressed: _isGoogleLoading ? null : _signInWithGoogle,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey[400]!),
-                    backgroundColor: Colors.grey[100],
-                    foregroundColor: Colors.black87,
-                  ),
-                  icon: _isGoogleLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          Icons.account_circle,
-                          size: 24,
-                          color: Colors.red[600],
-                        ),
-                  label: Text(
-                    _isGoogleLoading ? 'Giriş yapılıyor...' : 'Google ile Giriş Yap',
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                // Google Sign-In disabled for now
+                // TODO: Enable when Firebase is configured
               ],
             ),
           ),

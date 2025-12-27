@@ -23,9 +23,9 @@ import { authenticate, rateLimit } from '../middleware/auth';
 const router = Router();
 
 // Rate limiting for group/task management endpoints
-const groupRateLimit = rateLimit(30, 15 * 60 * 1000); // 30 requests per 15 minutes
-const taskRateLimit = rateLimit(100, 15 * 60 * 1000); // 100 requests per 15 minutes
-const statsRateLimit = rateLimit(20, 15 * 60 * 1000); // 20 requests per 15 minutes
+const groupRateLimit = rateLimit(200, 15 * 60 * 1000); // 200 requests per 15 minutes
+const taskRateLimit = rateLimit(500, 15 * 60 * 1000); // 500 requests per 15 minutes
+const statsRateLimit = rateLimit(100, 15 * 60 * 1000); // 100 requests per 15 minutes
 
 /**
  * @route   GET /api/groups/test

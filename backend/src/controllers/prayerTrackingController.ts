@@ -19,13 +19,6 @@ const updateSunnahSchema = z.object({
   isCompleted: z.boolean(),
 });
 
-const updateHealthSchema = z.object({
-  waterIntake: z.number().min(0).max(20).optional(),
-  exerciseHours: z.number().min(0).max(24).optional(),
-  quranPages: z.number().min(0).max(604).optional(),
-  oralHygiene: z.boolean().optional(),
-  readingHours: z.number().min(0).max(24).optional(),
-});
 
 /**
  * Get daily prayer tracking record
@@ -79,13 +72,6 @@ export const getDailyRecord = async (req: Request, res: Response): Promise<void>
         kazaPrayers: {
           sabah: 0, ogle: 0, ikindi: 0, aksam: 0, yatsi: 0,
         },
-        healthData: {
-          waterIntake: 0,
-          exerciseHours: 0,
-          quranPages: 0,
-          oralHygiene: false,
-          readingHours: 0,
-        },
       };
 
       prayerRecord = await prisma.prayerTracking.create({
@@ -95,7 +81,6 @@ export const getDailyRecord = async (req: Request, res: Response): Promise<void>
           fardPrayers: defaultRecord.fardPrayers,
           sunnahPrayers: defaultRecord.sunnahPrayers,
           kazaPrayers: defaultRecord.kazaPrayers,
-          healthData: defaultRecord.healthData,
         },
       });
     }
@@ -136,14 +121,13 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const { fardPrayers, sunnahPrayers, kazaPrayers, healthData } = req.body;
+    const { fardPrayers, sunnahPrayers, kazaPrayers } = req.body;
 
     // Build update data object
     const updateData: any = {};
     if (fardPrayers !== undefined) updateData.fardPrayers = fardPrayers;
     if (sunnahPrayers !== undefined) updateData.sunnahPrayers = sunnahPrayers;
     if (kazaPrayers !== undefined) updateData.kazaPrayers = kazaPrayers;
-    if (healthData !== undefined) updateData.healthData = healthData;
     updateData.userUsername = req.user.username;
 
     // Upsert prayer tracking record
@@ -162,7 +146,6 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
         fardPrayers: fardPrayers || {},
         sunnahPrayers: sunnahPrayers || {},
         kazaPrayers: kazaPrayers || {},
-        healthData: healthData || {},
       },
     });
 
@@ -252,7 +235,6 @@ export const updateFardPrayer = async (req: Request, res: Response): Promise<voi
         fardPrayers: currentFardPrayers,
         sunnahPrayers: {},
         kazaPrayers: {},
-        healthData: {},
       },
     });
 
@@ -335,7 +317,6 @@ export const updateSunnahPrayer = async (req: Request, res: Response): Promise<v
         fardPrayers: {},
         sunnahPrayers: currentSunnahPrayers,
         kazaPrayers: {},
-        healthData: {},
       },
     });
 
@@ -404,7 +385,6 @@ export const updateKazaPrayers = async (req: Request, res: Response): Promise<vo
         fardPrayers: {},
         sunnahPrayers: {},
         kazaPrayers,
-        healthData: {},
       },
     });
 
@@ -417,89 +397,6 @@ export const updateKazaPrayers = async (req: Request, res: Response): Promise<vo
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to update kaza prayers',
-    });
-  }
-};
-
-/**
- * Update health data
- */
-export const updateHealthData = async (req: Request, res: Response): Promise<void> => {
-  try {
-    if (!req.user) {
-      res.status(401).json({
-        error: 'Authentication required',
-        message: 'No authenticated user',
-      });
-      return;
-    }
-
-    const date = req.params.date as string;
-    const validation = updateHealthSchema.safeParse(req.body);
-
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      res.status(400).json({
-        error: 'Invalid date format',
-        message: 'Date must be in YYYY-MM-DD format',
-      });
-      return;
-    }
-
-    if (!validation.success) {
-      res.status(400).json({
-        error: 'Validation failed',
-        details: validation.error.issues,
-      });
-      return;
-    }
-
-    const healthData = validation.data;
-
-    // Get existing health data and merge with new data
-    const existingRecord = await prisma.prayerTracking.findUnique({
-      where: {
-        userId_date: {
-          userId: req.user.userId,
-          date: new Date(date),
-        },
-      },
-    });
-
-    const currentHealthData = (existingRecord?.healthData as any) || {};
-    const updatedHealthData = { ...currentHealthData, ...healthData };
-
-    // Upsert the record
-    const updatedRecord = await prisma.prayerTracking.upsert({
-      where: {
-        userId_date: {
-          userId: req.user.userId,
-          date: new Date(date),
-        },
-      },
-      update: {
-        healthData: updatedHealthData,
-        userUsername: req.user.username,
-      },
-      create: {
-        userId: req.user.userId,
-        userUsername: req.user.username,
-        date: new Date(date),
-        fardPrayers: {},
-        sunnahPrayers: {},
-        kazaPrayers: {},
-        healthData: updatedHealthData,
-      },
-    });
-
-    res.status(200).json({
-      message: 'Health data updated successfully',
-      data: updatedRecord,
-    });
-  } catch (error) {
-    console.error('Update health data error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to update health data',
     });
   }
 };
@@ -615,6 +512,42 @@ export const getWeeklyStats = async (req: Request, res: Response): Promise<void>
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to get weekly statistics',
+    });
+  }
+};
+
+/**
+ * Get all prayer tracking records for the current user
+ */
+export const getAllRecords = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        error: 'Authentication required',
+        message: 'No authenticated user',
+      });
+      return;
+    }
+
+    const records = await prisma.prayerTracking.findMany({
+      where: {
+        userId: req.user.userId,
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    res.status(200).json({
+      message: 'All records retrieved successfully',
+      data: records,
+      count: records.length,
+    });
+  } catch (error) {
+    console.error('Get all records error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to get all records',
     });
   }
 };
