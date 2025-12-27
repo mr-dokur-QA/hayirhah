@@ -604,16 +604,19 @@ class StorageService {
     if (group == null) return;
 
     final groupTasks = await getGroupTasks(groupId);
+    final completedTasks = groupTasks.where((task) => task.status == 'completed').toList();
     
-    // For tefriciye, yasin, fetih, cevsen, and 1000_ihlas groups, calculate progress based on amount
-    // For hatim groups, calculate progress based on task count
+    // Eğer görevlerde amount varsa (tefriciye, yasin, fetih, cevsen, 1000_ihlas),
+    // amount toplamını al. Yoksa (hatim), görev sayısını al.
+    final hasAmount = completedTasks.any((t) => t.amount != null && t.amount! > 0);
+    
     int completedProgress;
-    if (group.type == 'tefriciye' || group.type == 'yasin' || group.type == 'fetih' || group.type == 'cevsen' || group.type == '1000_ihlas') {
-      completedProgress = groupTasks
-          .where((task) => task.status == 'completed')
-          .fold(0, (sum, task) => sum + (task.amount ?? 0));
+    if (hasAmount) {
+      // Amount bazlı hesaplama (cevsen, tefriciye, yasin, fetih, 1000_ihlas)
+      completedProgress = completedTasks.fold(0, (sum, task) => sum + (task.amount ?? 0));
     } else {
-      completedProgress = groupTasks.where((t) => t.status == 'completed').length;
+      // Görev sayısı bazlı hesaplama (hatim)
+      completedProgress = completedTasks.length;
     }
 
     final updatedGroup = group.copyWith(currentProgress: completedProgress);

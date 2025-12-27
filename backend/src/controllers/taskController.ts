@@ -563,17 +563,28 @@ export const completeTask = async (req: Request, res: Response): Promise<void> =
     });
 
     // Update group progress
-    const completedCount = await prisma.task.count({
+    // Cevşen için amount toplamını hesapla, diğerleri için görev sayısını
+    const completedTasks = await prisma.task.findMany({
       where: {
         groupId,
         status: 'completed',
       },
+      select: {
+        amount: true,
+      },
     });
+
+    // Eğer görevlerde amount varsa (cevşen gibi), toplamı al
+    // Yoksa (hatim gibi), görev sayısını al
+    const hasAmount = completedTasks.some(t => t.amount != null && t.amount > 0);
+    const completedProgress = hasAmount 
+      ? completedTasks.reduce((sum, t) => sum + (t.amount ?? 0), 0)
+      : completedTasks.length;
 
     await prisma.group.update({
       where: { id: groupId },
       data: {
-        currentProgress: completedCount,
+        currentProgress: completedProgress,
       },
     });
 
