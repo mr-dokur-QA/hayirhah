@@ -15,6 +15,7 @@ class ApiService {
   static const String _groups = '/groups';
   static const String _groupsJoin = '/groups/join';
   static const String _prayerTracking = '/prayer-tracking';
+  static const String _notificationsDevice = '/notifications/device';
 
   /// Set auth token
   void setAuthToken(String token) {
@@ -114,6 +115,28 @@ class ApiService {
       return response.statusCode == 200;
     } on DioException catch (e) {
       _handleError('Logout', e);
+      return false;
+    }
+  }
+
+  // ==================== Notifications ====================
+
+  /// Register/update this device's push token on backend (requires auth)
+  Future<bool> registerDeviceToken({
+    required String token,
+    String? platform,
+  }) async {
+    try {
+      final response = await _client.post(
+        _notificationsDevice,
+        data: {
+          'token': token,
+          if (platform != null) 'platform': platform,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      _handleError('Register device token', e);
       return false;
     }
   }

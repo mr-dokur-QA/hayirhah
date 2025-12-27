@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import '../../services/prayer_tracking_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/user.dart';
 import '../dashboard/dashboard_screen.dart';
 
@@ -55,6 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
           } catch (e) {
             debugPrint('Prayer tracking sync error (non-critical): $e');
           }
+
+          // Register push token for this logged-in user (non-blocking)
+          // ignore: unawaited_futures
+          NotificationService.instance.syncDeviceTokenToBackend();
+
           // Token is valid, navigate to dashboard
           Navigator.pushReplacement(
             context,
@@ -130,6 +136,10 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (e) {
           debugPrint('Prayer tracking sync error (non-critical): $e');
         }
+
+        // Register push token for this logged-in user (non-blocking)
+        // ignore: unawaited_futures
+        NotificationService.instance.syncDeviceTokenToBackend();
 
         Navigator.pushReplacement(
           context,
@@ -236,6 +246,10 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (e) {
           debugPrint('Prayer tracking sync error (non-critical): $e');
         }
+
+        // Register push token for this logged-in user (non-blocking)
+        // ignore: unawaited_futures
+        NotificationService.instance.syncDeviceTokenToBackend();
 
         Navigator.pushReplacement(
           context,
