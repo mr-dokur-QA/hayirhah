@@ -307,10 +307,14 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                 // Logo ve başlık
-                Icon(
-                  Icons.brightness_7,
-                  size: 80,
-                  color: Theme.of(context).primaryColor,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset(
+                    'assets/images/hayirhah-app-pp.png',
+                    width: 96,
+                    height: 96,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
