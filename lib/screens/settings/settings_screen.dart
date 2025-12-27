@@ -544,6 +544,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final result = await _apiService.sendNotificationTest();
+              if (!mounted) return;
+              if (result == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Test bildirimi gönderilemedi (API hatası).')),
+                );
+                return;
+              }
+
+              final ok = result['ok'] == true;
+              final msg = ok
+                  ? 'Test bildirimi gönderildi (sent: ${result['sent']}, failed: ${result['failed']}).'
+                  : 'Test bildirimi gönderilemedi: ${result['reason'] ?? 'unknown'}.';
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(msg)),
+              );
+            },
+            icon: const Icon(Icons.bug_report),
+            label: const Text('Bildirim Testi'),
+          ),
         if (_preferences.enabled) ...[
           ListTile(
             title: const Text('Erken Hatırlatma'),

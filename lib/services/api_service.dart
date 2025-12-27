@@ -16,6 +16,7 @@ class ApiService {
   static const String _groupsJoin = '/groups/join';
   static const String _prayerTracking = '/prayer-tracking';
   static const String _notificationsDevice = '/notifications/device';
+  static const String _notificationsTest = '/notifications/test';
 
   /// Set auth token
   void setAuthToken(String token) {
@@ -138,6 +139,20 @@ class ApiService {
     } on DioException catch (e) {
       _handleError('Register device token', e);
       return false;
+    }
+  }
+
+  /// Send a test push notification to the current user's devices (requires auth)
+  Future<Map<String, dynamic>?> sendNotificationTest() async {
+    try {
+      final response = await _client.post(_notificationsTest);
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+      return null;
+    } on DioException catch (e) {
+      _handleError('Send notification test', e);
+      return null;
     }
   }
 
