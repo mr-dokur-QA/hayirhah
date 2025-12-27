@@ -327,16 +327,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Birlikte okuyalım, birlikte dua edelim',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Text(
                   'Hesaba çekilmeden kendimizi hesaba çekelim',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w600,
                       ),
