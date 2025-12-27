@@ -308,11 +308,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                 // Logo ve başlık
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(24),
                   child: Image.asset(
                     'assets/images/hayirhah-app-pp.png',
-                    width: 96,
-                    height: 96,
+                    width: 140,
+                    height: 140,
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -331,6 +331,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey[600],
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Hesaba çekilmeden kendimizi hesaba çekelim',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                      ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
