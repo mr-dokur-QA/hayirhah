@@ -136,6 +136,7 @@ export const createGroup = async (req: Request, res: Response): Promise<void> =>
       deadline: deadline ? new Date(deadline) : null,
       inviteCode,
       creatorId: req.user.userId,
+      creatorUsername: req.user.username,
     };
 
     if (description !== undefined) {

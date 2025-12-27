@@ -50,6 +50,7 @@ model Group {
   title           String
   description     String?
   creatorId       String
+  creatorUsername String?
   type            String
   targetCount     Int
   currentProgress Int           @default(0)
@@ -156,9 +157,10 @@ model SystemSetting {
 }
 
 model UserAnalytics {
-  id        String   @id @default(cuid())
-  userId    String
-  eventType String
+  id           String   @id @default(cuid())
+  userId       String
+  userUsername String?
+  eventType    String
   eventData Json?
   ipAddress String?
   userAgent String?
