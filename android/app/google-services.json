@@ -1,44 +1,26 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "dua-kardeslik-demo",
-    "storage_bucket": "dua-kardeslik-demo.appspot.com"
+    "project_number": "118014108234",
+    "project_id": "hayirhah-14b3d",
+    "storage_bucket": "hayirhah-14b3d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "mobilesdk_app_id": "1:118014108234:android:940c576a9b33b13c73fcb3",
         "android_client_info": {
           "package_name": "com.duakardeslik.app.dua_kardeslik"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.duakardeslik.app.dua_kardeslik",
-            "certificate_hash": "abcdef1234567890abcdef1234567890abcdef12"
-          }
-        },
-        {
-          "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567"
+          "current_key": "AIzaSyDEUbCmDMyVvou2wncWLYr70GCVhBiHR5M"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

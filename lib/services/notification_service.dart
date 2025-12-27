@@ -32,6 +32,8 @@ class NotificationService {
     if (_initialized) return;
     _initialized = true;
 
+    debugPrint('🔔 NotificationService.initialize()');
+
     // Android local notifications init
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -60,8 +62,18 @@ class NotificationService {
 
     // Keep backend token registration up-to-date.
     _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-      debugPrint('🔄 FCM token refreshed');
+      debugPrint('🔄 FCM token refreshed: ${newToken.substring(0, newToken.length > 10 ? 10 : newToken.length)}... (${newToken.length})');
       await syncDeviceTokenToBackend(tokenOverride: newToken);
+    });
+
+    // Best-effort: try to obtain token early (non-blocking)
+    // ignore: unawaited_futures
+    getFcmToken().then((t) {
+      debugPrint(
+        t == null
+            ? '⚠️ FCM token not available at init'
+            : '✅ FCM token at init: ${t.substring(0, 10)}... (${t.length})',
+      );
     });
   }
 
@@ -76,7 +88,32 @@ class NotificationService {
 
   Future<String?> getFcmToken() async {
     try {
-      return await FirebaseMessaging.instance.getToken();
+      // Ensure FCM auto-init is enabled
+      await FirebaseMessaging.instance.setAutoInitEnabled(true);
+      debugPrint('🔔 FCM auto-init enabled');
+
+      // Sometimes token isn't ready immediately after install/first run.
+      for (var i = 0; i < 3; i++) {
+        final t = await FirebaseMessaging.instance.getToken();
+        if (t != null && t.isNotEmpty) {
+          debugPrint('✅ FCM getToken attempt ${i + 1}: ${t.substring(0, 10)}... (${t.length})');
+          return t;
+        }
+        debugPrint('⚠️ FCM getToken attempt ${i + 1}: (null/empty)');
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+
+      // Force regeneration once (best-effort)
+      debugPrint('🔄 FCM deleteToken() -> getToken()');
+      await FirebaseMessaging.instance.deleteToken();
+      final t2 = await FirebaseMessaging.instance.getToken();
+      if (t2 != null && t2.isNotEmpty) {
+        debugPrint('✅ FCM token regenerated: ${t2.substring(0, 10)}... (${t2.length})');
+        return t2;
+      }
+
+      debugPrint('❌ FCM token still not available after retries');
+      return null;
     } catch (e) {
       debugPrint('⚠️ getToken error: $e');
       return null;
@@ -115,8 +152,11 @@ class NotificationService {
   /// Safe to call multiple times; backend upserts by (userId, token).
   Future<bool> syncDeviceTokenToBackend({String? tokenOverride}) async {
     try {
-      final token = tokenOverride ?? await FirebaseMessaging.instance.getToken();
-      if (token == null || token.isEmpty) return false;
+      final token = tokenOverride ?? await getFcmToken();
+      if (token == null || token.isEmpty) {
+        debugPrint('❌ syncDeviceTokenToBackend: token is null/empty');
+        return false;
+      }
 
       final platform = switch (defaultTargetPlatform) {
         TargetPlatform.android => 'android',
@@ -127,9 +167,12 @@ class NotificationService {
         TargetPlatform.fuchsia => 'fuchsia',
       };
 
+      debugPrint('📤 Registering device token to backend: platform=$platform token=${token.substring(0, 10)}... (${token.length})');
       final ok = await ApiService().registerDeviceToken(token: token, platform: platform);
       if (!ok) {
         debugPrint('⚠️ Device token registration failed (maybe not logged in yet).');
+      } else {
+        debugPrint('✅ Device token registered on backend');
       }
       return ok;
     } catch (e) {
@@ -139,6 +182,7 @@ class NotificationService {
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
+    debugPrint('🔔 FG message: ${message.messageId} data=${message.data} notif=${message.notification?.title}');
     final notification = message.notification;
     final title = notification?.title ?? (message.data['title']?.toString() ?? 'Bildirim');
     final body = notification?.body ?? (message.data['body']?.toString() ?? '');

@@ -135,6 +135,9 @@ class ApiService {
           if (platform != null) 'platform': platform,
         },
       );
+      debugPrint(
+        '📡 /notifications/device -> ${response.statusCode} (platform=$platform token=${token.substring(0, token.length > 10 ? 10 : token.length)}... len=${token.length})',
+      );
       return response.statusCode == 200 || response.statusCode == 201;
     } on DioException catch (e) {
       _handleError('Register device token', e);
