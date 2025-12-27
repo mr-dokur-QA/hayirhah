@@ -313,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'assets/images/hayirhah-app-pp.png',
                     width: 96,
                     height: 96,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 24),

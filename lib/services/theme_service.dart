@@ -12,16 +12,17 @@ class ThemeService extends ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
 
   // Light theme colors
-  static const Color _primaryLight = Color(0xFF48BB78);
-  static const Color _primaryDarkLight = Color(0xFF2F855A);
+  // Updated to match app logo's teal tone
+  static const Color _primaryLight = Color(0xFF2A8A8C);
+  static const Color _primaryDarkLight = Color(0xFF1F6F73);
   static const Color _backgroundLight = Color(0xFFF8F9FA);
   static const Color _surfaceLight = Colors.white;
   static const Color _textLight = Color(0xFF2D3748);
   static const Color _secondaryTextLight = Color(0xFF4A5568);
 
   // Dark theme colors
-  static const Color _primaryDark = Color(0xFF68D391);
-  static const Color _primaryDarkDark = Color(0xFF48BB78);
+  static const Color _primaryDark = Color(0xFF4FB5B8);
+  static const Color _primaryDarkDark = Color(0xFF2A8A8C);
   static const Color _backgroundDark = Color(0xFF1A202C);
   static const Color _surfaceDark = Color(0xFF2D3748);
   static const Color _textDark = Colors.white;
