@@ -48,8 +48,14 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         try {
           final result = await _apiService.joinGroup(inviteCode);
           if (result != null) {
-            final groupData = result['data'] ?? result;
-            final groupId = groupData['id'];
+            // Backend shape:
+            // { message: 'Successfully joined group', data: { group: {...}, membership: {...} } }
+            // Older/local shape:
+            // { data: { id: ... } } or { id: ... }
+            final data = result['data'] ?? result;
+            final dynamic groupData = (data is Map && data['group'] != null) ? data['group'] : data;
+            final groupId = (groupData is Map) ? groupData['id'] : null;
+
             if (groupId != null && mounted) {
               Navigator.pushReplacement(
                 context,
@@ -57,12 +63,15 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
               );
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${groupData['title'] ?? 'Etkinlik'} etkinliğine katıldınız!'),
+                  content: Text('${(groupData is Map ? groupData['title'] : null) ?? 'Etkinlik'} etkinliğine katıldınız!'),
                   backgroundColor: Colors.green,
                 ),
               );
               return;
             }
+
+            // If we got a 200 but couldn't resolve groupId, treat it as a server response shape issue
+            throw Exception('Sunucu yanıtı okunamadı. Lütfen tekrar deneyin.');
           }
         } on DioException catch (e) {
           final status = e.response?.statusCode;
@@ -89,6 +98,11 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
           }
           if (status == 400) {
             // Could be already a member or invalid code
+            final msg = (e.response?.data is Map) ? (e.response?.data['message']?.toString()) : null;
+            // Backend returns 400 "Already a member" with message; show that cleanly.
+            if (msg != null && msg.isNotEmpty) {
+              throw Exception(msg);
+            }
             throw Exception('Bu davet kodu geçersiz veya zaten katıldınız');
           }
           throw Exception('Sunucu hatası (${status ?? 'bilinmiyor'})');

@@ -7,6 +7,10 @@ import 'group_detail_screen.dart';
 import 'create_group_screen.dart';
 import '../invite/join_group_screen.dart';
 
+enum _GroupsStatusTab { ongoing, completed }
+
+enum _GroupsSortOption { remainingDays, newest, title }
+
 class MyGroupsScreen extends StatefulWidget {
   const MyGroupsScreen({Key? key}) : super(key: key);
 
@@ -21,6 +25,9 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
   List<Group> _filteredGroups = [];
   bool _isLoading = true;
   String? _selectedTypeFilter; // null = tümü
+  _GroupsStatusTab _statusTab = _GroupsStatusTab.ongoing;
+  _GroupsSortOption _ongoingSort = _GroupsSortOption.remainingDays;
+  _GroupsSortOption _completedSort = _GroupsSortOption.newest;
 
   // Etkinlik türleri
   final Map<String, String> _typeNames = {
@@ -47,27 +54,57 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     return difference;
   }
 
+  bool _isGroupCompleted(Group group) {
+    if (group.targetCount <= 0) return false;
+    return group.currentProgress >= group.targetCount;
+  }
+
+  double _getProgressPercent(Group group) {
+    if (group.targetCount <= 0) return 0.0;
+    final raw = (group.currentProgress / group.targetCount) * 100;
+    if (raw.isNaN || raw.isInfinite) return 0.0;
+    return raw.clamp(0.0, 100.0);
+  }
+
   // Etkinlikleri filtrele ve sırala
   void _applyFilterAndSort() {
     List<Group> filtered = _groups;
     
+    // Duruma göre filtrele (Devam Eden / Tamamlanan)
+    filtered = filtered.where((g) {
+      final isCompleted = _isGroupCompleted(g);
+      if (_statusTab == _GroupsStatusTab.completed) return isCompleted;
+      return !isCompleted;
+    }).toList();
+
     // Türe göre filtrele
     if (_selectedTypeFilter != null) {
       filtered = filtered.where((g) => g.type == _selectedTypeFilter).toList();
     }
-    
-    // Kalan güne göre sırala (en az kalan önce, null deadline'lar sona)
-    filtered.sort((a, b) {
-      final daysA = _getRemainingDays(a);
-      final daysB = _getRemainingDays(b);
-      
-      // Deadline olmayanlar sona
-      if (daysA == null && daysB == null) return 0;
-      if (daysA == null) return 1;
-      if (daysB == null) return -1;
-      
-      return daysA.compareTo(daysB);
-    });
+
+    final sort = _statusTab == _GroupsStatusTab.completed ? _completedSort : _ongoingSort;
+    switch (sort) {
+      case _GroupsSortOption.remainingDays:
+        // Kalan güne göre sırala (en az kalan önce, null deadline'lar sona)
+        filtered.sort((a, b) {
+          final daysA = _getRemainingDays(a);
+          final daysB = _getRemainingDays(b);
+
+          // Deadline olmayanlar sona
+          if (daysA == null && daysB == null) return 0;
+          if (daysA == null) return 1;
+          if (daysB == null) return -1;
+
+          return daysA.compareTo(daysB);
+        });
+        break;
+      case _GroupsSortOption.newest:
+        filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case _GroupsSortOption.title:
+        filtered.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+    }
     
     setState(() {
       _filteredGroups = filtered;
@@ -188,8 +225,12 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = Theme.of(context).brightness == Brightness.dark
+        ? Theme.of(context).scaffoldBackgroundColor
+        : const Color(0xFFF7F7F9);
+
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: const Text(
           'Etkinliklerim',
@@ -201,6 +242,11 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
         elevation: 1,
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: 'Sırala / Filtrele',
+            icon: const Icon(Icons.tune),
+            onPressed: _showSortAndFilterSheet,
+          ),
           IconButton(
             tooltip: 'Etkinliğe Katıl',
             icon: const Icon(Icons.group_add),
@@ -222,6 +268,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                 ? _buildEmptyState()
                 : Column(
                     children: [
+                      _buildStatusTabs(),
                       _buildFilterChips(),
                       Expanded(child: _buildGroupsList()),
                     ],
@@ -246,6 +293,49 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     );
   }
 
+  Widget _buildStatusTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: SegmentedButton<_GroupsStatusTab>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment<_GroupsStatusTab>(
+            value: _GroupsStatusTab.ongoing,
+            label: Text('Devam Eden'),
+          ),
+          ButtonSegment<_GroupsStatusTab>(
+            value: _GroupsStatusTab.completed,
+            label: Text('Tamamlanan'),
+          ),
+        ],
+        selected: <_GroupsStatusTab>{_statusTab},
+        onSelectionChanged: (selection) {
+          final next = selection.first;
+          if (next == _statusTab) return;
+          setState(() {
+            _statusTab = next;
+          });
+          _applyFilterAndSort();
+        },
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          backgroundColor: WidgetStateProperty.resolveWith<Color?>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Theme.of(context).colorScheme.primary.withOpacity(0.12);
+            }
+            return Theme.of(context).colorScheme.surface;
+          }),
+          side: WidgetStateProperty.resolveWith<BorderSide?>((states) {
+            if (states.contains(WidgetState.selected)) {
+              return BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.35));
+            }
+            return BorderSide(color: Theme.of(context).dividerColor.withOpacity(0.8));
+          }),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterChips() {
     // Mevcut etkinlik türlerini bul
     final availableTypes = _groups.map((g) => g.type).toSet().toList();
@@ -262,6 +352,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
               child: FilterChip(
                 label: const Text('Tümü'),
                 selected: _selectedTypeFilter == null,
+                showCheckmark: false,
                 onSelected: (selected) {
                   setState(() {
                     _selectedTypeFilter = null;
@@ -283,6 +374,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                 ),
                 label: Text(_typeNames[type] ?? type),
                 selected: _selectedTypeFilter == type,
+                showCheckmark: false,
                 onSelected: (selected) {
                   setState(() {
                     _selectedTypeFilter = selected ? type : null;
@@ -390,7 +482,9 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             Icon(Icons.filter_list_off, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Bu filtreye uygun etkinlik yok',
+              _statusTab == _GroupsStatusTab.completed
+                  ? 'Tamamlanan etkinlik bulunamadı'
+                  : 'Devam eden etkinlik bulunamadı',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 8),
@@ -426,16 +520,20 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
 
   Widget _buildGroupCard(Group group) {
     final isCreator = group.creatorId == _storageService.currentUser?.id;
-    final progress = group.targetCount > 0 
-        ? (group.currentProgress / group.targetCount) * 100 
-        : 0.0;
+    final progressPercent = _getProgressPercent(group);
+    final isCompleted = _isGroupCompleted(group);
+    final remainingDays = _getRemainingDays(group);
+    final isOverdue = remainingDays != null && remainingDays < 0;
+    final isDueToday = remainingDays != null && remainingDays == 0;
+
+    final typeColor = _getTypeColor(group.type);
+    final titleColor = Theme.of(context).textTheme.titleMedium?.color;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 1,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -445,68 +543,52 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
             ),
           );
         },
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _getTypeColor(group.type).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      _getTypeIcon(group.type),
-                      color: _getTypeColor(group.type),
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // En üstte tür
+                        _buildTypeChip(group.type),
+                        const SizedBox(height: 6),
+                        // Altına başlık
                         Text(
                           group.title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D3748),
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: titleColor,
+                              ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
-                            if (isCreator)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Oluşturan',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.purple.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            if (isCreator) ...[
+                              _buildSmallChip(
+                                label: 'Oluşturan',
+                                bgColor: Colors.purple.withOpacity(0.12),
+                                fgColor: Colors.purple.shade700,
                               ),
-                            if (isCreator) const SizedBox(width: 8),
-                            Text(
-                              '${group.participantIds.length} katılımcı',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                '${group.participantIds.length} katılımcı',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
                               ),
                             ),
                           ],
@@ -514,81 +596,261 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                       ],
                     ),
                   ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.grey[400],
-                    size: 16,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _buildStatusBadge(isCompleted: isCompleted),
+                      if (isOverdue || isDueToday) ...[
+                        const SizedBox(height: 8),
+                        Icon(
+                          Icons.alarm,
+                          size: 18,
+                          color: isOverdue ? Colors.red.shade600 : Colors.orange.shade700,
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
               
               if (group.description.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   group.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 2,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.75),
+                      ),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
               
-              const SizedBox(height: 16),
-              
-              // Progress
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'İlerleme',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '${group.currentProgress}/${group.targetCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: progress / 100,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      _getTypeColor(group.type),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${progress.toStringAsFixed(1)}% tamamlandı',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 10),
+              _buildCompactProgressRow(
+                typeColor: typeColor,
+                progressPercent: progressPercent,
+                current: group.currentProgress,
+                target: group.targetCount,
+                isCompleted: isCompleted,
               ),
               
               if (group.deadline != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 _buildRemainingDaysWidget(group),
               ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTypeChip(String type) {
+    final color = _getTypeColor(type);
+    final label = _typeNames[type] ?? type;
+    return _buildSmallChip(
+      label: label,
+      bgColor: color.withOpacity(0.12),
+      fgColor: color,
+      leading: Icon(_getTypeIcon(type), size: 14, color: color),
+    );
+  }
+
+  Widget _buildSmallChip({
+    required String label,
+    required Color bgColor,
+    required Color fgColor,
+    Widget? leading,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fgColor.withOpacity(0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (leading != null) ...[
+            leading,
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: fgColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge({required bool isCompleted}) {
+    final bg = isCompleted ? Colors.green.withOpacity(0.14) : Colors.blue.withOpacity(0.14);
+    final fg = isCompleted ? Colors.green.shade700 : Colors.blue.shade700;
+    final label = isCompleted ? 'Tamamlandı' : 'Devam';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withOpacity(0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(isCompleted ? Icons.check_circle : Icons.play_circle, size: 16, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactProgressRow({
+    required Color typeColor,
+    required double progressPercent,
+    required int current,
+    required int target,
+    required bool isCompleted,
+  }) {
+    final barBg = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white.withOpacity(0.12)
+        : Colors.black.withOpacity(0.06);
+
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (progressPercent / 100).clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: barBg,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isCompleted ? Colors.green.shade600 : typeColor,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '${progressPercent.toStringAsFixed(0)}%',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.85),
+              ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '$current/$target',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.75),
+              ),
+        ),
+      ],
+    );
+  }
+
+  void _showSortAndFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final sort = _statusTab == _GroupsStatusTab.completed ? _completedSort : _ongoingSort;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sırala',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                RadioListTile<_GroupsSortOption>(
+                  value: _GroupsSortOption.remainingDays,
+                  groupValue: sort,
+                  title: const Text('Kalan güne göre'),
+                  subtitle: const Text('Deadline olanlar önce gelir'),
+                  onChanged: (_statusTab == _GroupsStatusTab.completed)
+                      ? null
+                      : (v) {
+                          if (v == null) return;
+                          setState(() => _ongoingSort = v);
+                          _applyFilterAndSort();
+                          Navigator.pop(context);
+                        },
+                ),
+                RadioListTile<_GroupsSortOption>(
+                  value: _GroupsSortOption.newest,
+                  groupValue: sort,
+                  title: const Text('En yeni'),
+                  subtitle: const Text('Oluşturulma tarihine göre'),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      if (_statusTab == _GroupsStatusTab.completed) {
+                        _completedSort = v;
+                      } else {
+                        _ongoingSort = v;
+                      }
+                    });
+                    _applyFilterAndSort();
+                    Navigator.pop(context);
+                  },
+                ),
+                RadioListTile<_GroupsSortOption>(
+                  value: _GroupsSortOption.title,
+                  groupValue: sort,
+                  title: const Text('Başlığa göre'),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      if (_statusTab == _GroupsStatusTab.completed) {
+                        _completedSort = v;
+                      } else {
+                        _ongoingSort = v;
+                      }
+                    });
+                    _applyFilterAndSort();
+                    Navigator.pop(context);
+                  },
+                ),
+                const Divider(height: 24),
+                if (_selectedTypeFilter != null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.clear),
+                      label: const Text('Tür filtresini temizle'),
+                      onPressed: () {
+                        setState(() => _selectedTypeFilter = null);
+                        _applyFilterAndSort();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -603,7 +865,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
     if (remainingDays < 0) {
       // Süresi geçmiş
       color = Colors.red;
-      icon = Icons.warning;
+      icon = Icons.alarm;
       text = '${remainingDays.abs()} gün gecikmiş';
     } else if (remainingDays == 0) {
       // Bugün son gün
