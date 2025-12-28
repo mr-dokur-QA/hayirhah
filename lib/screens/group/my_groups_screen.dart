@@ -352,6 +352,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
               child: FilterChip(
                 label: const Text('Tümü'),
                 selected: _selectedTypeFilter == null,
+                showCheckmark: false,
                 onSelected: (selected) {
                   setState(() {
                     _selectedTypeFilter = null;
@@ -373,6 +374,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                 ),
                 label: Text(_typeNames[type] ?? type),
                 selected: _selectedTypeFilter == type,
+                showCheckmark: false,
                 onSelected: (selected) {
                   setState(() {
                     _selectedTypeFilter = selected ? type : null;
@@ -550,38 +552,26 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: typeColor.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      _getTypeIcon(group.type),
-                      color: typeColor,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // En üstte tür
+                        _buildTypeChip(group.type),
+                        const SizedBox(height: 6),
+                        // Altına başlık
                         Text(
                           group.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: titleColor,
                               ),
                         ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            _buildTypeChip(group.type),
-                            const SizedBox(width: 8),
                             if (isCreator) ...[
                               _buildSmallChip(
                                 label: 'Oluşturan',
@@ -597,7 +587,7 @@ class _MyGroupsScreenState extends State<MyGroupsScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.7),
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w600,
                                     ),
                               ),
                             ),
