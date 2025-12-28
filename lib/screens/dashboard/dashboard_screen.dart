@@ -98,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Dua ve ibadet arkadaşlarınızla birlikte manevi yolculuğunuza devam edin',
+                      '“Kalpler ancak Allah’ı anmakla huzur bulur.” (Ra’d, 13:28)',
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
