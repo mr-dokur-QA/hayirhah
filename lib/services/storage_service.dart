@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user.dart';
@@ -693,6 +694,29 @@ class StorageService {
     ];
     
     return '${date.day} ${months[date.month - 1]}, ${date.year}';
+  }
+
+  // ==================== Task Reading Progress ====================
+
+  /// Save task reading progress (for Quran juz reading)
+  Future<void> saveTaskReadingProgress(String taskId, int pageNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('task_reading_$taskId', pageNumber);
+    } catch (e) {
+      debugPrint('Error saving task reading progress: $e');
+    }
+  }
+
+  /// Get task reading progress
+  Future<int?> getTaskReadingProgress(String taskId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('task_reading_$taskId');
+    } catch (e) {
+      debugPrint('Error getting task reading progress: $e');
+      return null;
+    }
   }
 }
 
