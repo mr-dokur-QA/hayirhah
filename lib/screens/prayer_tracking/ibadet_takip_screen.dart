@@ -259,6 +259,15 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
                         color: Colors.orange,
                         child: _buildKazaSection(),
                       ),
+                      const SizedBox(height: 16),
+                      
+                      // Kur'an Okuma section
+                      _buildSectionCard(
+                        title: 'Kur\'an Okuma',
+                        icon: Icons.menu_book,
+                        color: Colors.teal,
+                        child: _buildQuranReadingSection(),
+                      ),
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -601,6 +610,71 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
     // User will explicitly save with the Save button (single API call)
   }
 
+  Widget _buildQuranReadingSection() {
+    final additional = _currentRecord?.additionalPrayers ?? AdditionalPrayersTracking.empty();
+    final pages = additional.quranReadingPages;
+    
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            'Okunan Sayfa',
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: pages > 0 
+                    ? () => _updateQuranReadingPages(pages - 1)
+                    : null,
+                color: pages > 0 ? Colors.red : Colors.grey,
+              ),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    pages.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () => _updateQuranReadingPages(pages + 1),
+                color: Colors.green,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _updateQuranReadingPages(int pages) async {
+    await _trackingService.updateQuranReadingPages(_selectedDate, pages);
+    setState(() {
+      _loadCurrentRecord();
+      _hasChanges = true;
+    });
+    // User will explicitly save with the Save button (single API call)
+  }
+
   Widget _buildWeeklyView() {
     return AnimatedBuilder(
       animation: _trackingService,
@@ -902,6 +976,28 @@ class _IbadetTakipScreenState extends State<IbadetTakipScreen> with SingleTicker
                     '${stats['completedPrayers']}/${stats['totalPrayers']}',
                     '${(stats['overallCompletionRate'] * 100).toInt()}%',
                     Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem(
+                    'Kur\'an Okuma',
+                    '${stats['totalQuranPages'] ?? 0} sayfa',
+                    '${stats['daysWithQuranReading'] ?? 0} gün',
+                    Colors.teal,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildStatItem(
+                    'Günlük Ortalama',
+                    '${((stats['averageQuranPagesPerDay'] ?? 0.0) * 10).round() / 10} sayfa',
+                    '${stats['daysWithQuranReading'] != null && stats['daysWithQuranReading']! > 0 ? ((stats['daysWithQuranReading']! / (stats['records'] as List).length) * 100).toInt() : 0}%',
+                    Colors.purple,
                   ),
                 ),
               ],

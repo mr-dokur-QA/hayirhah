@@ -120,6 +120,7 @@ class AdditionalPrayersTracking {
   final bool evvabin;
   final bool tespih;
   final Map<String, int> kazaPrayers; // Kaza namazları
+  final int quranReadingPages; // Kur'an okuma sayfa sayısı
 
   AdditionalPrayersTracking({
     this.teheccud = false,
@@ -127,6 +128,7 @@ class AdditionalPrayersTracking {
     this.evvabin = false,
     this.tespih = false,
     required this.kazaPrayers,
+    this.quranReadingPages = 0,
   });
 
   AdditionalPrayersTracking copyWith({
@@ -135,6 +137,7 @@ class AdditionalPrayersTracking {
     bool? evvabin,
     bool? tespih,
     Map<String, int>? kazaPrayers,
+    int? quranReadingPages,
   }) {
     return AdditionalPrayersTracking(
       teheccud: teheccud ?? this.teheccud,
@@ -142,6 +145,7 @@ class AdditionalPrayersTracking {
       evvabin: evvabin ?? this.evvabin,
       tespih: tespih ?? this.tespih,
       kazaPrayers: kazaPrayers ?? this.kazaPrayers,
+      quranReadingPages: quranReadingPages ?? this.quranReadingPages,
     );
   }
 
@@ -152,6 +156,7 @@ class AdditionalPrayersTracking {
       'evvabin': evvabin,
       'tespih': tespih,
       'kazaPrayers': kazaPrayers,
+      'quranReadingPages': quranReadingPages,
     };
   }
 
@@ -168,6 +173,7 @@ class AdditionalPrayersTracking {
         'akşam': 0,
         'yatsı': 0,
       }),
+      quranReadingPages: map['quranReadingPages'] ?? 0,
     );
   }
 
@@ -179,6 +185,7 @@ class AdditionalPrayersTracking {
       'akşam': 0,
       'yatsı': 0,
     },
+    quranReadingPages: 0,
   );
 
 }
@@ -289,6 +296,7 @@ class DailyPrayerTracking {
       'fardPrayers': fardPrayers,
       'sunnahPrayers': sunnahPrayers,
       'kazaPrayers': kazaPrayers,
+      'quranReadingPages': additionalPrayers.quranReadingPages,
     };
   }
 

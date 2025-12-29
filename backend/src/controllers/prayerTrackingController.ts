@@ -81,6 +81,7 @@ export const getDailyRecord = async (req: Request, res: Response): Promise<void>
           fardPrayers: defaultRecord.fardPrayers,
           sunnahPrayers: defaultRecord.sunnahPrayers,
           kazaPrayers: defaultRecord.kazaPrayers,
+          quranReadingPages: 0,
         },
       });
     }
@@ -121,13 +122,14 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const { fardPrayers, sunnahPrayers, kazaPrayers } = req.body;
+    const { fardPrayers, sunnahPrayers, kazaPrayers, quranReadingPages } = req.body;
 
     // Build update data object
     const updateData: any = {};
     if (fardPrayers !== undefined) updateData.fardPrayers = fardPrayers;
     if (sunnahPrayers !== undefined) updateData.sunnahPrayers = sunnahPrayers;
     if (kazaPrayers !== undefined) updateData.kazaPrayers = kazaPrayers;
+    if (quranReadingPages !== undefined) updateData.quranReadingPages = quranReadingPages;
     updateData.userUsername = req.user.username;
 
     // Upsert prayer tracking record
@@ -146,6 +148,7 @@ export const updateDailyRecord = async (req: Request, res: Response): Promise<vo
         fardPrayers: fardPrayers || {},
         sunnahPrayers: sunnahPrayers || {},
         kazaPrayers: kazaPrayers || {},
+        quranReadingPages: quranReadingPages ?? 0,
       },
     });
 
@@ -235,6 +238,7 @@ export const updateFardPrayer = async (req: Request, res: Response): Promise<voi
         fardPrayers: currentFardPrayers,
         sunnahPrayers: {},
         kazaPrayers: {},
+        quranReadingPages: 0,
       },
     });
 
@@ -317,6 +321,7 @@ export const updateSunnahPrayer = async (req: Request, res: Response): Promise<v
         fardPrayers: {},
         sunnahPrayers: currentSunnahPrayers,
         kazaPrayers: {},
+        quranReadingPages: 0,
       },
     });
 
@@ -385,6 +390,7 @@ export const updateKazaPrayers = async (req: Request, res: Response): Promise<vo
         fardPrayers: {},
         sunnahPrayers: {},
         kazaPrayers,
+        quranReadingPages: 0,
       },
     });
 

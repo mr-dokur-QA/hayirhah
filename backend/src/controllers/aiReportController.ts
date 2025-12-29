@@ -140,6 +140,8 @@ function analyzeData(records: any[], type: string): Record<string, any> {
   let evvabinCount = 0;
   let tespihCount = 0;
   let totalKaza = 0;
+  let totalQuranPages = 0;
+  let daysWithQuranReading = 0;
 
   const missedByPrayer: Record<string, number> = {
     sabah: 0, ogle: 0, ikindi: 0, aksam: 0, yatsi: 0,
@@ -149,6 +151,7 @@ function analyzeData(records: any[], type: string): Record<string, any> {
     const fardPrayers = (record.fardPrayers as PrayerData['fardPrayers']) || {};
     const sunnahPrayers = (record.sunnahPrayers as PrayerData['sunnahPrayers']) || {};
     const kazaPrayers = (record.kazaPrayers as PrayerData['kazaPrayers']) || {};
+    const quranReadingPages = record.quranReadingPages || 0;
 
     // Fard prayers analysis
     for (const [name, data] of Object.entries(fardPrayers)) {
@@ -174,6 +177,12 @@ function analyzeData(records: any[], type: string): Record<string, any> {
     // Kaza prayers
     for (const count of Object.values(kazaPrayers)) {
       totalKaza += count || 0;
+    }
+
+    // Quran reading
+    totalQuranPages += quranReadingPages;
+    if (quranReadingPages > 0) {
+      daysWithQuranReading++;
     }
   }
 
@@ -204,6 +213,9 @@ function analyzeData(records: any[], type: string): Record<string, any> {
     evvabinCount,
     tespihCount,
     totalKaza,
+    totalQuranPages,
+    daysWithQuranReading,
+    averageQuranPagesPerDay: totalDays > 0 ? Math.round((totalQuranPages / totalDays) * 10) / 10 : 0,
     missedByPrayer,
   };
 }
@@ -310,6 +322,7 @@ GÜNLÜK VERİLER:
 - Sünnet: ${data.completedSunnet}/5
 - Tesbihat: ${data.completedTesbihat}/5
 - Kaza Namazı: ${data.totalKaza} adet
+- Kur'an Okuma: ${data.totalQuranPages} sayfa
 - Teheccüd: ${data.teheccudCount > 0 ? 'Evet' : 'Hayır'}
 - Duha: ${data.duhaCount > 0 ? 'Evet' : 'Hayır'}
 
@@ -320,6 +333,7 @@ Merhaba kardeşim! ile başla, sonra duruma göre:
 ${data.completedFard > 0 ? `
 💪 GÜÇLÜ YÖNLERİN
 - Bugünkü GERÇEK başarılarını vurgula (sadece veriye dayalı!)
+${data.totalQuranPages > 0 ? `- Kur'an okuma alışkanlığını takdir et (${data.totalQuranPages} sayfa)` : ''}
 ` : `
 🌱 YENİ BAŞLANGIÇ
 - Kayıt var ama henüz namaz işaretlenmediğini nazikçe belirt
@@ -328,6 +342,7 @@ ${data.completedFard > 0 ? `
 
 🌱 GELİŞTİRİLECEK YÖNLER
 - Nazikçe ve teşvik edici önerilerde bulun
+${data.totalQuranPages === 0 ? `- Kur'an okuma alışkanlığı kazanmanın öneminden bahset` : ''}
 
 🤲 DUA
 - İçten bir dua ile kapanış
@@ -386,6 +401,11 @@ NAFİLE NAMAZLAR:
 - Tesbih Namazı: ${data.tespihCount} gün
 - Kaza: ${data.totalKaza} adet
 
+KUR'AN OKUMA:
+- Toplam Sayfa: ${data.totalQuranPages} sayfa
+- Okuma Yapılan Gün: ${data.daysWithQuranReading} gün
+- Günlük Ortalama: ${data.averageQuranPagesPerDay} sayfa
+
 RAPOR FORMATI:
 
 Merhaba kardeşim! ile başla, sonra:
@@ -393,6 +413,7 @@ Merhaba kardeşim! ile başla, sonra:
 ${data.completedFard > 0 ? `
 💪 GÜÇLÜ YÖNLERİN
 - Bu haftaki GERÇEK başarıları vurgula (veriye dayalı!)
+${data.totalQuranPages > 0 ? `- Kur'an okuma alışkanlığını takdir et (${data.totalQuranPages} sayfa, ${data.daysWithQuranReading} gün)` : ''}
 ` : `
 🌱 BAŞLANGIÇ NOKTASI
 - Kayıt olduğunu ama henüz namaz işaretlenmediğini belirt
@@ -401,6 +422,7 @@ ${data.completedFard > 0 ? `
 
 🌱 GELİŞTİRİLECEK YÖNLER
 - Nazikçe öneriler
+${data.totalQuranPages === 0 ? `- Kur'an okuma alışkanlığı kazanmanın öneminden bahset` : data.averageQuranPagesPerDay < 1 ? `- Kur'an okuma sıklığını artırmayı teşvik et` : ''}
 
 🤲 DUA
 - İçten bir dua ile kapanış
@@ -460,6 +482,11 @@ NAFİLE NAMAZLAR:
 - Tesbih Namazı: ${data.tespihCount} gün
 - Toplam Kaza: ${data.totalKaza} adet
 
+KUR'AN OKUMA:
+- Toplam Sayfa: ${data.totalQuranPages} sayfa
+- Okuma Yapılan Gün: ${data.daysWithQuranReading} gün
+- Günlük Ortalama: ${data.averageQuranPagesPerDay} sayfa
+
 RAPOR FORMATI:
 
 Merhaba kardeşim! ile başla, sonra:
@@ -467,6 +494,7 @@ Merhaba kardeşim! ile başla, sonra:
 ${data.completedFard > 0 ? `
 💪 GÜÇLÜ YÖNLERİN
 - Bu ayki GERÇEK başarıları vurgula (veriye dayalı!)
+${data.totalQuranPages > 0 ? `- Kur'an okuma alışkanlığını takdir et (${data.totalQuranPages} sayfa, ${data.daysWithQuranReading} gün)` : ''}
 ` : `
 🌱 YENİ BAŞLANGIÇ
 - Kayıt olduğunu ama henüz namaz işaretlenmediğini belirt
@@ -475,9 +503,11 @@ ${data.completedFard > 0 ? `
 
 🌱 GELİŞTİRİLECEK YÖNLER
 - Nazikçe öneriler
+${data.totalQuranPages === 0 ? `- Kur'an okuma alışkanlığı kazanmanın öneminden bahset` : data.averageQuranPagesPerDay < 1 ? `- Kur'an okuma sıklığını artırmayı teşvik et` : ''}
 
 📈 GELECEK AY İÇİN HEDEFLER
 - 1-2 küçük ve ulaşılabilir hedef öner
+${data.totalQuranPages === 0 ? `- Kur'an okuma hedefi ekle (örn: günde 1 sayfa)` : ''}
 
 🤲 DUA
 - İçten bir dua ile kapanış

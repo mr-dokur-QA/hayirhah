@@ -31,16 +31,17 @@ model User {
 }
 
 model PrayerTracking {
-  id            String   @id @default(cuid())
-  userId        String
-  userUsername  String?
-  date          DateTime @db.Date
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  fardPrayers   Json?
-  sunnahPrayers Json?
-  kazaPrayers   Json?
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  userId            String
+  userUsername      String?
+  date              DateTime @db.Date
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  fardPrayers       Json?
+  sunnahPrayers     Json?
+  kazaPrayers       Json?
+  quranReadingPages Int      @default(0)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
   @@map("prayer_trackings")

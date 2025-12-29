@@ -249,6 +249,22 @@ class PrayerTrackingService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Update quran reading pages count
+  Future<void> updateQuranReadingPages(DateTime date, int pages) async {
+    final currentUser = _storageService.currentUser;
+    if (currentUser == null) return;
+    
+    final dayKey = _getDayKey(currentUser.id, date);
+    var dayRecord = _dailyRecords[dayKey] ?? _createDefaultDayRecord(currentUser.id, date);
+    
+    final updatedAdditional = dayRecord.additionalPrayers.copyWith(quranReadingPages: pages);
+    final updatedDayRecord = dayRecord.copyWith(additionalPrayers: updatedAdditional);
+    _dailyRecords[dayKey] = updatedDayRecord;
+    
+    await _saveToStorage();
+    notifyListeners();
+  }
+
   // Add custom prayer (sunnah, nafile, etc.)
   Future<void> addCustomPrayer({
     required DateTime date,
@@ -362,6 +378,8 @@ class PrayerTrackingService extends ChangeNotifier {
     final completedFard = records.fold(0, (sum, day) => sum + day.completedFardCount);
     final totalPrayers = records.fold(0, (sum, day) => sum + day.totalPrayerCount);
     final completedPrayers = records.fold(0, (sum, day) => sum + day.completedPrayerCount);
+    final totalQuranPages = records.fold(0, (sum, day) => sum + day.additionalPrayers.quranReadingPages);
+    final daysWithQuranReading = records.where((day) => day.additionalPrayers.quranReadingPages > 0).length;
     
     return {
       'totalFard': totalFard,
@@ -370,6 +388,9 @@ class PrayerTrackingService extends ChangeNotifier {
       'completedPrayers': completedPrayers,
       'fardCompletionRate': totalFard > 0 ? completedFard / totalFard : 0.0,
       'overallCompletionRate': totalPrayers > 0 ? completedPrayers / totalPrayers : 0.0,
+      'totalQuranPages': totalQuranPages,
+      'daysWithQuranReading': daysWithQuranReading,
+      'averageQuranPagesPerDay': records.isNotEmpty ? totalQuranPages / records.length : 0.0,
       'records': records,
     };
   }
@@ -386,6 +407,8 @@ class PrayerTrackingService extends ChangeNotifier {
     final completedFard = records.fold(0, (sum, day) => sum + day.completedFardCount);
     final totalPrayers = records.fold(0, (sum, day) => sum + day.totalPrayerCount);
     final completedPrayers = records.fold(0, (sum, day) => sum + day.completedPrayerCount);
+    final totalQuranPages = records.fold(0, (sum, day) => sum + day.additionalPrayers.quranReadingPages);
+    final daysWithQuranReading = records.where((day) => day.additionalPrayers.quranReadingPages > 0).length;
     
     return {
       'month': targetDate.month,
@@ -396,6 +419,9 @@ class PrayerTrackingService extends ChangeNotifier {
       'completedPrayers': completedPrayers,
       'fardCompletionRate': totalFard > 0 ? completedFard / totalFard : 0.0,
       'overallCompletionRate': totalPrayers > 0 ? completedPrayers / totalPrayers : 0.0,
+      'totalQuranPages': totalQuranPages,
+      'daysWithQuranReading': daysWithQuranReading,
+      'averageQuranPagesPerDay': records.isNotEmpty ? totalQuranPages / records.length : 0.0,
       'records': records,
     };
   }
@@ -558,6 +584,18 @@ class PrayerTrackingService extends ChangeNotifier {
           );
           result = result.copyWith(additionalPrayers: additionalPrayers);
         }
+      }
+
+      // Parse quran reading pages
+      final quranReadingPages = record['quranReadingPages'];
+      if (quranReadingPages != null) {
+        final pages = quranReadingPages is int 
+            ? quranReadingPages 
+            : (quranReadingPages is num ? quranReadingPages.toInt() : 0);
+        final additionalPrayers = result.additionalPrayers.copyWith(
+          quranReadingPages: pages,
+        );
+        result = result.copyWith(additionalPrayers: additionalPrayers);
       }
 
       return result;

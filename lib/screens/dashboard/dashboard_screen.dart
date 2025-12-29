@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import '../group/create_group_screen.dart';
 import '../group/my_groups_screen.dart';
 import '../invite/join_group_screen.dart';
@@ -30,7 +31,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadPrayerTimes() async {
     await _prayerService.loadPrayerTimes();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _updateWidget();
+    }
+  }
+
+  Future<void> _updateWidget() async {
+    try {
+      final nextPrayer = _prayerService.nextPrayer;
+      if (nextPrayer != null) {
+        final now = DateTime.now();
+        var nextPrayerTime = nextPrayer.time;
+        
+        // Eğer namaz vakti geçmişse, yarının aynı vaktini hesapla
+        if (nextPrayerTime.isBefore(now)) {
+          nextPrayerTime = nextPrayerTime.add(const Duration(days: 1));
+        }
+        
+        final timeUntil = nextPrayerTime.difference(now);
+        String timeRemaining;
+        if (timeUntil.inDays > 0) {
+          timeRemaining = 'Yarın ${timeUntil.inHours.remainder(24)}s ${timeUntil.inMinutes.remainder(60)}dk';
+        } else if (timeUntil.inHours > 0) {
+          timeRemaining = '${timeUntil.inHours}s ${timeUntil.inMinutes.remainder(60)}dk';
+        } else if (timeUntil.inMinutes > 0) {
+          timeRemaining = '${timeUntil.inMinutes}dk';
+        } else if (timeUntil.inSeconds > 0) {
+          timeRemaining = '${timeUntil.inSeconds}sn';
+        } else {
+          timeRemaining = 'Şimdi';
+        }
+
+        final timeStr = '${nextPrayerTime.hour.toString().padLeft(2, '0')}:${nextPrayerTime.minute.toString().padLeft(2, '0')}';
+        
+        await HomeWidget.saveWidgetData<String>('nextPrayerName', nextPrayer.name);
+        await HomeWidget.saveWidgetData<String>('nextPrayerTime', timeStr);
+        await HomeWidget.saveWidgetData<String>('locationName', _prayerService.locationName);
+        await HomeWidget.saveWidgetData<String>('timeRemaining', timeRemaining);
+        await HomeWidget.updateWidget(
+          name: 'PrayerTimesWidgetProvider',
+          androidName: 'com.duakardeslik.app.dua_kardeslik.PrayerTimesWidgetProvider',
+        );
+      }
+    } catch (e) {
+      debugPrint('Widget update error: $e');
+    }
   }
 
   Future<void> _initializeTracking() async {
