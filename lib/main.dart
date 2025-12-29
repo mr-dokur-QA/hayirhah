@@ -15,10 +15,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Firebase init (required for push notifications)
-  await Firebase.initializeApp();
-
-  // Register background handler early
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  // Skip Firebase initialization on web if options are not available
+  try {
+    await Firebase.initializeApp();
+    // Register background handler early (only for mobile)
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase initialization skipped (web or not configured): $e');
+  }
   
   // Initialize services in parallel for faster startup
   await Future.wait([
