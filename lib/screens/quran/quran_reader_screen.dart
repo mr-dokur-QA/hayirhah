@@ -60,14 +60,16 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   }
 
   String _getQuranPageImageUrl(int pageNumber) {
-    // Kur'an sayfa görselleri için kaynaklar:
-    // 1. Tanzil.net (en güvenilir): https://tanzil.net/res/docs/{pageNumber}.png
-    // 2. Quran.com API: https://api.quran.com/api/v4/quran/pages/{pageNumber}
-    // 3. Alternatif CDN: https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/images/pages/{pageNumber}.png
+    // Kur'an sayfa görselleri için alternatif kaynaklar:
+    // 1. SearchTruth.org (güvenilir): https://www.searchtruth.org/quran/images1/{pageNumber}.jpg
+    // 2. Alternatif: https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/images/pages/{pageNumber}.png
+    // 3. Alternatif: https://www.islamicfinder.org/quran/images/{pageNumber}.png
     
-    // Tanzil.net kullanıyoruz (sayfa numaraları 3 haneli format: 001, 002, ... 604)
+    // Sayfa numaraları 3 haneli format: 001, 002, ... 604
     final pageStr = pageNumber.toString().padLeft(3, '0');
-    return 'https://tanzil.net/res/docs/$pageStr.png';
+    
+    // SearchTruth.org kullanıyoruz (en güvenilir ve hızlı)
+    return 'https://www.searchtruth.org/quran/images1/$pageStr.jpg';
   }
 
   void _goToPage(int pageNumber) {

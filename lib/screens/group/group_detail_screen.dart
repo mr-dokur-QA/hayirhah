@@ -7,6 +7,7 @@ import '../../models/task.dart';
 import '../../models/user.dart';
 import '../../core/network/connectivity_service.dart';
 import '../text/arabic_text_viewer_screen.dart';
+import '../quran/quran_reader_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final String groupId;
@@ -1054,11 +1055,33 @@ Hayırlı olsun!
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          sectionTitle,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              sectionTitle,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            // Kur'an Okuma butonu (sadece hatim etkinliği için)
+            if (_group!.type == 'hatim')
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const QuranReaderScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.menu_book, size: 18),
+                label: const Text('Kur\'an Oku'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF667EEA),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         if (_group!.type == 'hatim')
