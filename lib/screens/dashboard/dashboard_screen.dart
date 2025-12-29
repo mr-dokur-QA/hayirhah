@@ -8,6 +8,7 @@ import '../settings/settings_screen.dart';
 import '../prayer/prayer_times_screen.dart';
 import '../prayer_tracking/ibadet_takip_screen.dart';
 import '../ai_report/ai_report_screen.dart';
+import '../quran/quran_reader_screen.dart';
 import '../../services/prayer_times_service.dart';
 import '../../services/prayer_tracking_service.dart';
 
@@ -248,6 +249,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: Icons.access_time,
                 color: Theme.of(context).colorScheme.primary,
                 onTap: () => _navigateToPrayerTimes(context),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Quran Reading button
+              _buildSecondaryButton(
+                context,
+                title: 'Kur\'an Okuma',
+                subtitle: 'Kur\'an-ı Kerim sayfalarını okuyun',
+                icon: Icons.menu_book,
+                color: const Color(0xFF667EEA),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const QuranReaderScreen(),
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 12),

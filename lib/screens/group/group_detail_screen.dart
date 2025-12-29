@@ -7,8 +7,6 @@ import '../../models/task.dart';
 import '../../models/user.dart';
 import '../../core/network/connectivity_service.dart';
 import '../text/arabic_text_viewer_screen.dart';
-import '../quran/quran_juz_reader_screen.dart';
-import '../../models/quran_juz.dart';
 
 class GroupDetailScreen extends StatefulWidget {
   final String groupId;
@@ -1616,27 +1614,6 @@ Hayırlı olsun!
     if (task.status == 'available') {
       _showAssignTaskDialog(task);
     } else if (task.status == 'assigned' && task.assignedTo == _currentUser?.id) {
-      // Hatim etkinliği için cüz okuma ekranını aç
-      if (_group?.type == 'hatim') {
-        final juz = QuranJuz.getJuzByTaskIndex(task.taskIndex);
-        if (juz != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => QuranJuzReaderScreen(
-                task: task,
-                juz: juz,
-                groupId: _group!.id,
-              ),
-            ),
-          ).then((refreshed) {
-            if (refreshed == true) {
-              _loadGroupData(showLoader: false);
-            }
-          });
-          return;
-        }
-      }
       _showCompleteTaskDialog(task);
     }
   }
