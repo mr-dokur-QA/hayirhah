@@ -1057,12 +1057,12 @@ Hayırlı olsun!
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              sectionTitle,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+      children: [
+        Text(
+          sectionTitle,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
             ),
             // Kur'an Okuma butonu (sadece hatim etkinliği için)
             if (_group!.type == 'hatim')

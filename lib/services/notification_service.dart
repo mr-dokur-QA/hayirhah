@@ -59,45 +59,45 @@ class NotificationService {
 
     // Firebase messaging setup (skip on web if Firebase not initialized)
     try {
-      // Ensure foreground notifications are presented on iOS
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+    // Ensure foreground notifications are presented on iOS
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // Listen for foreground messages and show a local notification.
+    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+
+    // Handle notification taps (app in background)
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      debugPrint('🔔 onMessageOpenedApp: ${message.messageId} data=${message.data}');
+      _handleRemoteMessageTap(message);
+    });
+
+    // Handle notification taps (cold start)
+    // ignore: unawaited_futures
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message == null) return;
+      debugPrint('🔔 getInitialMessage: ${message.messageId} data=${message.data}');
+      _handleRemoteMessageTap(message);
+    });
+
+    // Keep backend token registration up-to-date.
+    _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      debugPrint('🔄 FCM token refreshed: ${newToken.substring(0, newToken.length > 10 ? 10 : newToken.length)}... (${newToken.length})');
+      await syncDeviceTokenToBackend(tokenOverride: newToken);
+    });
+
+    // Best-effort: try to obtain token early (non-blocking)
+    // ignore: unawaited_futures
+    getFcmToken().then((t) {
+      debugPrint(
+        t == null
+            ? '⚠️ FCM token not available at init'
+            : '✅ FCM token at init: ${t.substring(0, 10)}... (${t.length})',
       );
-
-      // Listen for foreground messages and show a local notification.
-      FirebaseMessaging.onMessage.listen(_onForegroundMessage);
-
-      // Handle notification taps (app in background)
-      FirebaseMessaging.onMessageOpenedApp.listen((message) {
-        debugPrint('🔔 onMessageOpenedApp: ${message.messageId} data=${message.data}');
-        _handleRemoteMessageTap(message);
-      });
-
-      // Handle notification taps (cold start)
-      // ignore: unawaited_futures
-      FirebaseMessaging.instance.getInitialMessage().then((message) {
-        if (message == null) return;
-        debugPrint('🔔 getInitialMessage: ${message.messageId} data=${message.data}');
-        _handleRemoteMessageTap(message);
-      });
-
-      // Keep backend token registration up-to-date.
-      _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        debugPrint('🔄 FCM token refreshed: ${newToken.substring(0, newToken.length > 10 ? 10 : newToken.length)}... (${newToken.length})');
-        await syncDeviceTokenToBackend(tokenOverride: newToken);
-      });
-
-      // Best-effort: try to obtain token early (non-blocking)
-      // ignore: unawaited_futures
-      getFcmToken().then((t) {
-        debugPrint(
-          t == null
-              ? '⚠️ FCM token not available at init'
-              : '✅ FCM token at init: ${t.substring(0, 10)}... (${t.length})',
-        );
-      });
+    });
     } catch (e) {
       debugPrint('🔔 Firebase messaging setup skipped (web or not configured): $e');
     }
@@ -105,12 +105,12 @@ class NotificationService {
 
   Future<void> requestPermissions() async {
     try {
-      final settings = await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-      debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    debugPrint('🔔 Notification permission: ${settings.authorizationStatus}');
     } catch (e) {
       debugPrint('🔔 Notification permission request skipped (web or not configured): $e');
     }

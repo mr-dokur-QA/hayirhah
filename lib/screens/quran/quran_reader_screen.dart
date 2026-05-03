@@ -59,20 +59,11 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     }
   }
 
-  String _getQuranPageImageUrl(int pageNumber) {
-    // Kur'an sayfa görselleri için alternatif kaynaklar:
-    // Test edilmiş çalışan kaynaklar:
-    // 1. Al-Quran Cloud API (sayfa görselleri): https://api.alquran.cloud/v1/page/{pageNumber}/quran-uthmani
-    // 2. Quran.com CDN: https://cdn.qurancdn.com/assets/quran/images/pages/{pageNumber}.png
-    // 3. IslamicFinder: https://www.islamicfinder.org/quran/images/{pageNumber}.png
-    
-    // Sayfa numaraları 3 haneli format: 001, 002, ... 604
+  String _getQuranPageAssetPath(int pageNumber) {
+    // Local assets'ten Kur'an sayfa görsellerini yükle
+    // Format: assets/quran_pages/001.png, 002.png, ... 604.png
     final pageStr = pageNumber.toString().padLeft(3, '0');
-    
-    // Al-Quran Cloud API kullanıyoruz - sayfa görselleri için
-    // Not: Bu API JSON döndürüyor, görsel için farklı endpoint gerekebilir
-    // Alternatif olarak Quran.com CDN deniyoruz
-    return 'https://cdn.qurancdn.com/assets/quran/images/pages/$pageStr.png';
+    return 'assets/quran_pages/$pageStr.png';
   }
 
   void _goToPage(int pageNumber) {
@@ -346,85 +337,59 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   }
 
   Widget _buildQuranPageImage(int pageNumber) {
-    // Birden fazla kaynak deniyoruz
-    final urls = [
-      'https://cdn.qurancdn.com/assets/quran/images/pages/${pageNumber.toString().padLeft(3, '0')}.png',
-      'https://www.searchtruth.org/quran/images1/${pageNumber.toString().padLeft(3, '0')}.jpg',
-      'https://www.islamicfinder.org/quran/images/${pageNumber.toString().padLeft(3, '0')}.png',
-    ];
-
-    return _buildImageWithFallback(urls, 0, pageNumber);
-  }
-
-  Widget _buildImageWithFallback(List<String> urls, int index, int pageNumber) {
-    if (index >= urls.length) {
-      // Tüm kaynaklar başarısız oldu
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sayfa yüklenemedi',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sayfa: $pageNumber',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'İnternet bağlantınızı kontrol edin',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {});
-              },
-              child: const Text('Tekrar Dene'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Image.network(
-      urls[index],
+    // Local assets'ten Kur'an sayfasını yükle
+    final assetPath = _getQuranPageAssetPath(pageNumber);
+    
+    return Image.asset(
+      assetPath,
       fit: BoxFit.contain,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) {
-          return child;
-        }
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('Sayfa yükleme hatası: $error');
+        debugPrint('Asset path: $assetPath');
         return Center(
-          child: CircularProgressIndicator(
-            value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded /
-                    loadingProgress.expectedTotalBytes!
-                : null,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Sayfa bulunamadı',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sayfa: $pageNumber',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Kur\'an sayfa görselleri assets klasörüne eklenmeli',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {});
+                },
+                child: const Text('Tekrar Dene'),
+              ),
+            ],
           ),
         );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        debugPrint('Sayfa yükleme hatası (kaynak ${index + 1}): $error');
-        debugPrint('URL: ${urls[index]}');
-        // Bir sonraki kaynağı dene
-        return _buildImageWithFallback(urls, index + 1, pageNumber);
       },
     );
   }
