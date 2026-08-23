@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+.font-arabic {
+  font-family: 'Amiri', 'Scheherazade New', 'Noto Naskh Arabic', serif;
+}
+
+/* Hüsrev Hattı & Türk Nesih Hat Stili (Göz Yormayan, Geniş ve Açık Harekeli) */
+.font-husrev {
+  font-family: 'Noto Naskh Arabic', 'Scheherazade New', 'Amiri', serif;
+  letter-spacing: 0.015em;
+  word-spacing: 0.05em;
+}
+
+/* Authentic Mushaf Parchment Paper Texture & Colors */
+.mushaf-paper {
+  background-color: #fbf7ea;
+  background-image: 
+    radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.4) 0%, rgba(243, 235, 212, 0.6) 100%);
+  color: #1e293b;
+}
+
+/* Tevâfuklu Mushaf Altın Tezhip Çerçevesi */
+.mushaf-frame {
+  border: 4px double #bda054;
+  outline: 1px solid #7d6423;
+  box-shadow: 
+    inset 0 0 12px rgba(189, 160, 84, 0.15),
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.45);
+}
+

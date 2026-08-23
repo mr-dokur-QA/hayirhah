@@ -159,6 +159,56 @@ class ApiService {
     }
   }
 
+  /// Dispatch a prayer alert push notification to topic / devices
+  Future<bool> sendPrayerAlert({
+    required String prayerName,
+    required String cityName,
+    String? prayerTimeStr,
+    String? sound,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/notifications/send-prayer-alert',
+        data: {
+          'prayerName': prayerName,
+          'cityName': cityName,
+          if (prayerTimeStr != null) 'prayerTimeStr': prayerTimeStr,
+          if (sound != null) 'sound': sound,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      _handleError('Send prayer alert', e);
+      return false;
+    }
+  }
+
+  /// Dispatch a group activity push notification to group members
+  Future<bool> sendGroupEventNotification({
+    required String groupId,
+    required String groupTitle,
+    required String eventType,
+    required String actorName,
+    String? taskTitle,
+  }) async {
+    try {
+      final response = await _client.post(
+        '/notifications/send-group-event',
+        data: {
+          'groupId': groupId,
+          'groupTitle': groupTitle,
+          'eventType': eventType,
+          'actorName': actorName,
+          if (taskTitle != null) 'taskTitle': taskTitle,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      _handleError('Send group event notification', e);
+      return false;
+    }
+  }
+
   // ==================== Group Management ====================
 
   /// Create a new group

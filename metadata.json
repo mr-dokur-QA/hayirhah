@@ -1,0 +1,6 @@
+{
+  "name": "Hayırhah",
+  "description": "İbadet takibi, namaz vakitleri, hatim ve dua kardeşliği grupları, Kur'an-ı Kerim ve kıble pusulası uygulaması",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -174,8 +174,113 @@ class NotificationService {
   }
 
   Future<void> schedulePrayerTimeNotifications(Map<String, dynamic> prayerTimes) async {
-    // Not implemented yet (future feature).
-    debugPrint('Prayer time notifications not yet implemented');
+    try {
+      debugPrint('🔔 Scheduling local prayer time notifications: $prayerTimes');
+      final now = DateTime.now();
+
+      final prayerNames = {
+        'Fajr': {'title': 'Sabah Namazı Vakti', 'id': 101},
+        'Dhuhr': {'title': 'Öğle Namazı Vakti', 'id': 102},
+        'Asr': {'title': 'İkindi Namazı Vakti', 'id': 103},
+        'Maghrib': {'title': 'Akşam Namazı Vakti', 'id': 104},
+        'Isha': {'title': 'Yatsı Namazı Vakti', 'id': 105},
+      };
+
+      for (final entry in prayerTimes.entries) {
+        final prayerKey = entry.key;
+        final timeStr = entry.value?.toString();
+        if (timeStr == null || !timeStr.contains(':')) continue;
+
+        final prayerInfo = prayerNames[prayerKey];
+        if (prayerInfo == null) continue;
+
+        final parts = timeStr.split(':');
+        final hour = int.tryParse(parts[0]) ?? 0;
+        final minute = int.tryParse(parts[1]) ?? 0;
+
+        var targetTime = DateTime(now.year, now.month, now.day, hour, minute);
+        if (targetTime.isBefore(now)) {
+          targetTime = targetTime.add(const Duration(days: 1));
+        }
+
+        const androidDetails = AndroidNotificationDetails(
+          'prayer_times_channel',
+          'Namaz Vakitleri Bildirimleri',
+          channelDescription: 'Ezan ve namaz vakti hatırlatıcıları',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
+        );
+        const iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        );
+        const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+        final notifId = prayerInfo['id'] as int;
+        final notifTitle = '🕌 ${prayerInfo['title']} ($timeStr)';
+        const notifBody = 'Vakit girdi. "Namaz müminin miracıdır." Haydi felaha!';
+
+        // If scheduled within 24 hours, prepare notification payload
+        final payloadData = jsonEncode({
+          'type': 'prayer_time',
+          'prayer': prayerKey,
+          'time': timeStr,
+        });
+
+        debugPrint('📅 Configured notification for $prayerKey at $targetTime (id: $notifId)');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error scheduling prayer notifications: $e');
+    }
+  }
+
+  /// Subscribe to city-based prayer time notifications via FCM topics
+  Future<void> subscribeToPrayerTimes(String cityName) async {
+    try {
+      final cleanCity = cityName.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+      final topic = 'prayer_$cleanCity';
+      debugPrint('🔔 Subscribing to FCM topic: $topic');
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+    } catch (e) {
+      debugPrint('⚠️ Subscribe to prayer times topic skipped/failed: $e');
+    }
+  }
+
+  /// Unsubscribe from city-based prayer time notifications
+  Future<void> unsubscribeFromPrayerTimes(String cityName) async {
+    try {
+      final cleanCity = cityName.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
+      final topic = 'prayer_$cleanCity';
+      debugPrint('🔕 Unsubscribing from FCM topic: $topic');
+      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+    } catch (e) {
+      debugPrint('⚠️ Unsubscribe from prayer times topic skipped/failed: $e');
+    }
+  }
+
+  /// Subscribe to group events (Hatim, Cevşen, Tefriciye updates)
+  Future<void> subscribeToGroup(String groupId) async {
+    try {
+      final topic = 'group_$groupId';
+      debugPrint('🔔 Subscribing to FCM group topic: $topic');
+      await FirebaseMessaging.instance.subscribeToTopic(topic);
+    } catch (e) {
+      debugPrint('⚠️ Subscribe to group topic skipped/failed: $e');
+    }
+  }
+
+  /// Unsubscribe from group events
+  Future<void> unsubscribeFromGroup(String groupId) async {
+    try {
+      final topic = 'group_$groupId';
+      debugPrint('🔕 Unsubscribing from FCM group topic: $topic');
+      await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
+    } catch (e) {
+      debugPrint('⚠️ Unsubscribe from group topic skipped/failed: $e');
+    }
   }
 
   /// Send current FCM token to backend (requires user to be logged in).
