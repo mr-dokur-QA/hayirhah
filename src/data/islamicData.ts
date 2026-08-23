@@ -233,17 +233,82 @@ export const SAMPLE_GROUPS: Group[] = [
     membersCount: 14,
     tasks: Array.from({ length: 30 }, (_, i) => {
       const idx = i + 1;
-      const isAssigned = idx <= 18;
+      const isMyCuz = idx === 1 || idx === 2 || idx === 3 || idx === 4;
       const isCompleted = idx <= 12;
+      const isAssigned = idx <= 18;
       return {
-        id: `task-hatim-${idx}`,
+        id: `task-hatim-1-${idx}`,
         groupId: 'grp-1',
         taskIndex: idx,
         title: `${idx}. Cüz`,
         description: `Kur'an-ı Kerim ${idx}. Cüz Tilaveti`,
         status: isCompleted ? 'completed' : isAssigned ? 'assigned' : 'available',
-        assignedTo: isAssigned ? (idx === 1 ? 'current-user' : `user-${idx}`) : undefined,
-        assignedToUsername: isAssigned ? (idx === 1 ? '@siz' : `@kardes_${idx}`) : undefined,
+        assignedTo: isMyCuz ? 'current-user' : isAssigned ? `user-${idx}` : undefined,
+        assignedToUsername: isMyCuz ? '@siz' : isAssigned ? `@kardes_${idx}` : undefined,
+        completedAt: isCompleted ? new Date().toISOString() : undefined,
+      };
+    }),
+  },
+  {
+    id: 'grp-1b',
+    title: 'Cuma Gecesi Hatm-i Şerifi',
+    description: 'Her Cuma gecesi duası yapılmak üzere okunan müşterek Hatm-i Şerif halkamız.',
+    creatorId: 'user-2',
+    creatorUsername: '@mehmet_salih',
+    type: 'hatim',
+    targetCount: 30,
+    currentProgress: 15,
+    isPrivate: false,
+    inviteCode: 'CUMAHATIM',
+    isActive: true,
+    createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    membersCount: 11,
+    tasks: Array.from({ length: 30 }, (_, i) => {
+      const idx = i + 1;
+      const isMyCuz = idx === 10 || idx === 11 || idx === 12;
+      const isCompleted = idx <= 10;
+      const isAssigned = idx <= 20;
+      return {
+        id: `task-hatim-2-${idx}`,
+        groupId: 'grp-1b',
+        taskIndex: idx,
+        title: `${idx}. Cüz`,
+        description: `Kur'an-ı Kerim ${idx}. Cüz Tilaveti`,
+        status: isCompleted ? 'completed' : isAssigned ? 'assigned' : 'available',
+        assignedTo: isMyCuz ? 'current-user' : isAssigned ? `user-${idx}` : undefined,
+        assignedToUsername: isMyCuz ? '@siz' : isAssigned ? `@kardes_${idx}` : undefined,
+        completedAt: isCompleted ? new Date().toISOString() : undefined,
+      };
+    }),
+  },
+  {
+    id: 'grp-1c',
+    title: 'Şühedâ & Geçmişlerimiz Hatm-i Şerifi',
+    description: 'Aziz şehitlerimiz ve ebediyete irtihal etmiş geçmişlerimizin ruhlarına ithafen okunan hatim.',
+    creatorId: 'user-6',
+    creatorUsername: '@zeynep_h',
+    type: 'hatim',
+    targetCount: 30,
+    currentProgress: 14,
+    isPrivate: false,
+    inviteCode: 'SUHEDAHATIM',
+    isActive: true,
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    membersCount: 9,
+    tasks: Array.from({ length: 30 }, (_, i) => {
+      const idx = i + 1;
+      const isMyCuz = idx === 28 || idx === 29 || idx === 30;
+      const isCompleted = idx === 28 || idx <= 10;
+      const isAssigned = idx >= 28 || idx <= 16;
+      return {
+        id: `task-hatim-3-${idx}`,
+        groupId: 'grp-1c',
+        taskIndex: idx,
+        title: `${idx}. Cüz`,
+        description: `Kur'an-ı Kerim ${idx}. Cüz Tilaveti`,
+        status: isCompleted ? 'completed' : isAssigned ? 'assigned' : 'available',
+        assignedTo: isMyCuz ? 'current-user' : isAssigned ? `user-${idx}` : undefined,
+        assignedToUsername: isMyCuz ? '@siz' : isAssigned ? `@kardes_${idx}` : undefined,
         completedAt: isCompleted ? new Date().toISOString() : undefined,
       };
     }),

@@ -287,6 +287,28 @@ export const ApiService = {
       if (task && task.status !== 'completed') {
         task.status = 'completed';
         task.completedAt = new Date().toISOString();
+        if (!task.assignedTo) {
+          const currentUser = this.getCurrentUser();
+          task.assignedTo = currentUser?.id || 'current-user';
+          task.assignedToUsername = currentUser?.username ? formatUserHandle(currentUser.username) : '@siz';
+          task.assignedAt = new Date().toISOString();
+        }
+        group.currentProgress = group.tasks.filter((t) => t.status === 'completed').length;
+        this.saveGroups(groups);
+      }
+    }
+    return group!;
+  },
+
+  uncompleteTask(groupId: string, taskIndex: number): Group {
+    const groups = this.getGroups();
+    const group = groups.find((g) => g.id === groupId);
+
+    if (group && group.tasks) {
+      const task = group.tasks.find((t) => t.taskIndex === taskIndex);
+      if (task && task.status === 'completed') {
+        task.status = 'assigned';
+        task.completedAt = undefined;
         group.currentProgress = group.tasks.filter((t) => t.status === 'completed').length;
         this.saveGroups(groups);
       }

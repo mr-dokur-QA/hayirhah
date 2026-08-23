@@ -7,7 +7,6 @@ import { QuranReader } from './components/QuranReader';
 import { ArabicTextViewer } from './components/ArabicTextViewer';
 import { QiblaFinder } from './components/QiblaFinder';
 import { Zikirmatik } from './components/Zikirmatik';
-import { AIAdvisor } from './components/AIAdvisor';
 import { CityPickerModal } from './components/CityPickerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
@@ -44,13 +43,42 @@ export function App() {
   const [user, setUser] = useState<User | null>(() => ApiService.getCurrentUser());
   const [dailyHadith, setDailyHadith] = useState(DAILY_HADITHS[0]);
 
+  // Night Mode state with localStorage persistence & system preference fallback
+  const [isNightMode, setIsNightMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('hayirhah_night_mode');
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch (e) {
+      console.warn('Failed to load saved night mode preference', e);
+    }
+    return false;
+  });
+
+  // Synchronize document.documentElement class & localStorage on night mode change
+  useEffect(() => {
+    try {
+      localStorage.setItem('hayirhah_night_mode', JSON.stringify(isNightMode));
+    } catch (e) {
+      console.warn('Failed to save night mode preference', e);
+    }
+    if (isNightMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isNightMode]);
+
   // In-app prayer notification banner state
   const [activeAlert, setActiveAlert] = useState<ActivePrayerAlert | null>(null);
 
   // Modals state
   const [isCityPickerOpen, setIsCityPickerOpen] = useState(false);
   const [isQiblaOpen, setIsQiblaOpen] = useState(false);
-  const [isAIAdvisorOpen, setIsAIAdvisorOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
@@ -251,7 +279,7 @@ export function App() {
   const completedFard = Object.values(todayTracking.fardPrayers || {}).filter((p) => p.isCompleted).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-950 transition-colors">
       {/* Global Navigation Header */}
       <Header
         currentCity={currentCity}
@@ -259,10 +287,11 @@ export function App() {
         onOpenQibla={() => {
           setActiveTab('kible_zikir');
         }}
-        onOpenAIReport={() => setIsAIAdvisorOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         user={user}
+        isNightMode={isNightMode}
+        onToggleNightMode={() => setIsNightMode((prev) => !prev)}
       />
 
       {/* Real-time Prayer Time Notification Alert Banner */}
@@ -312,7 +341,7 @@ export function App() {
       )}
 
       {/* Desktop Main Navigation Tabs */}
-      <nav className="hidden md:block bg-white border-b border-slate-200/80 sticky top-16 z-20 shadow-2xs">
+      <nav className="hidden md:block bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 sticky top-16 z-20 shadow-2xs transition-colors">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between">
           <div className="flex items-center space-x-1">
             {navItems.map((item) => (
@@ -321,11 +350,11 @@ export function App() {
                 onClick={() => setActiveTab(item.id)}
                 className={`py-3.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
                   activeTab === item.id
-                    ? 'border-emerald-600 text-emerald-800 bg-emerald-50/40'
-                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    ? 'border-emerald-600 dark:border-emerald-500 text-emerald-800 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/40'
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
               >
-                <span className={activeTab === item.id ? 'text-emerald-600' : 'text-slate-400'}>
+                <span className={activeTab === item.id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
@@ -335,9 +364,9 @@ export function App() {
 
           {/* Quick Streak / Daily Progress Badge */}
           <div className="flex items-center gap-2 py-2">
-            <span className="text-xs font-semibold text-slate-500">Bugünkü Gayret:</span>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/70 text-emerald-800 text-xs font-bold">
-              <Flame className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Bugünkü Gayret:</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100/70 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-700/50 text-xs font-bold">
+              <Flame className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-600 dark:fill-emerald-400" />
               <span>{completedFard}/5 Farz</span>
             </div>
           </div>
@@ -378,18 +407,18 @@ export function App() {
               </div>
 
               {/* Today's Quick Ibadet Status Card */}
-              <div className="md:col-span-5 bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between space-y-4">
+              <div className="md:col-span-5 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4 transition-colors">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Günün İbadet Özeti
                     </span>
-                    <span className="text-xs font-bold text-emerald-700">
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                       %{Math.round((completedFard / 5) * 100)}
                     </span>
                   </div>
-                  <h4 className="font-bold text-base text-slate-900">Kulluk & İbadet Çetelesi</h4>
-                  <p className="text-xs text-slate-500">
+                  <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">Kulluk & İbadet Çetelesi</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Farz namazlarınızı, sünnetleri ve zikirleri işaretleyerek günlük takibinizi sürdürün.
                   </p>
                 </div>
@@ -410,7 +439,7 @@ export function App() {
                         className={`p-2 rounded-xl border text-center transition-all ${
                           done
                             ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                         }`}
                       >
                         <span className="text-[10px] font-bold block">{pr.label}</span>
@@ -422,24 +451,24 @@ export function App() {
 
                 <button
                   onClick={() => setActiveTab('ibadet')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <CheckSquare className="w-3.5 h-3.5 text-emerald-700" />
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                   <span>Çeteleyi Tamamla</span>
                 </button>
               </div>
             </div>
 
             {/* Communal Rings Quick Preview */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-base text-slate-900">Aktif Hatim ve Dua Halkaları</h4>
-                  <p className="text-xs text-slate-500">Mümin kardeşlerinizle birlikte okunan hatim ve tefriciyeler.</p>
+                  <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">Aktif Hatim ve Dua Halkaları</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Mümin kardeşlerinizle birlikte okunan hatim ve tefriciyeler.</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('gruplar')}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
+                  className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300"
                 >
                   Tümünü Gör →
                 </button>
@@ -454,16 +483,16 @@ export function App() {
                   <div
                     key={idx}
                     onClick={() => setActiveTab('gruplar')}
-                    className="p-4 rounded-xl border border-slate-200 hover:border-emerald-300 hover:bg-slate-50/60 transition-all cursor-pointer space-y-2"
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-slate-50/60 dark:hover:bg-slate-850 transition-all cursor-pointer space-y-2"
                   >
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
                       {item.type}
                     </span>
-                    <h5 className="font-bold text-xs text-slate-800 line-clamp-1">{item.title}</h5>
-                    <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200 line-clamp-1">{item.title}</h5>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                       <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${item.percent}%` }} />
                     </div>
-                    <span className="text-[11px] text-slate-500 font-semibold">{item.progress}</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">{item.progress}</span>
                   </div>
                 ))}
               </div>
@@ -497,6 +526,7 @@ export function App() {
             <QuranReader
               initialJuz={selectedJuzForReader}
               onClearInitial={() => setSelectedJuzForReader(null)}
+              isNightMode={isNightMode}
             />
           </div>
         )}
@@ -518,7 +548,7 @@ export function App() {
       </main>
 
       {/* Bottom Mobile Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-lg transition-colors">
         <div className="grid grid-cols-6 h-16">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
@@ -527,10 +557,10 @@ export function App() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={`flex flex-col items-center justify-center transition-colors ${
-                  isActive ? 'text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+                  isActive ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
-                <div className={`p-1 rounded-lg ${isActive ? 'bg-emerald-50 text-emerald-700' : ''}`}>
+                <div className={`p-1 rounded-lg ${isActive ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' : ''}`}>
                   {item.icon}
                 </div>
                 <span className="text-[9px] tracking-tight mt-0.5 truncate max-w-[48px]">
@@ -550,15 +580,11 @@ export function App() {
         onClose={() => setIsCityPickerOpen(false)}
       />
 
-      <AIAdvisor
-        user={user}
-        isOpen={isAIAdvisorOpen}
-        onClose={() => setIsAIAdvisorOpen(false)}
-      />
-
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        isNightMode={isNightMode}
+        onToggleNightMode={() => setIsNightMode((prev) => !prev)}
       />
 
       <AuthModal

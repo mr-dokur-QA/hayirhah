@@ -33,6 +33,7 @@ interface QuranReaderProps {
   initialJuz?: number | null;
   initialSurahNumber?: number | null;
   onClearInitial?: () => void;
+  isNightMode?: boolean;
 }
 
 const BOOKMARK_STORAGE_KEY = 'hayirhah_quran_bookmark';
@@ -41,6 +42,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
   initialJuz,
   initialSurahNumber,
   onClearInitial,
+  isNightMode = false,
 }) => {
   // Navigation tabs: 'juz' (30 Cüz Hatim) or 'surahs' (114 Sure)
   const [activeTab, setActiveTab] = useState<'juz' | 'surahs'>(initialSurahNumber ? 'surahs' : 'juz');
@@ -85,7 +87,18 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
   const [fontSize, setFontSize] = useState<number>(27);
   const [fontFamily, setFontFamily] = useState<'husrev' | 'classic'>('husrev');
   const [highlightTevafuk, setHighlightTevafuk] = useState<boolean>(true); // Kırmızı Lafzatullah renklendirmesi
-  const [paperTheme, setPaperTheme] = useState<'yellowish' | 'warm' | 'white'>('yellowish'); // Sarımtırak saman kağıdı vs Sıcak vs Beyaz
+  const [paperTheme, setPaperTheme] = useState<'yellowish' | 'warm' | 'white' | 'dark'>(
+    isNightMode ? 'dark' : 'yellowish'
+  );
+
+  // Update paperTheme if isNightMode prop changes
+  useEffect(() => {
+    if (isNightMode && paperTheme !== 'dark') {
+      setPaperTheme('dark');
+    } else if (!isNightMode && paperTheme === 'dark') {
+      setPaperTheme('yellowish');
+    }
+  }, [isNightMode]);
 
   // Translation / Meal Display Toggle
   const [showAllTranslations, setShowAllTranslations] = useState(false);
@@ -302,7 +315,9 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
 
   // Paper background class
   const paperClass =
-    paperTheme === 'yellowish'
+    paperTheme === 'dark'
+      ? 'bg-[#0c1319] text-slate-100 dark:bg-[#0c1319] dark:text-slate-100 shadow-2xl'
+      : paperTheme === 'yellowish'
       ? 'bg-[#fbf7ea] text-slate-900 shadow-inner'
       : paperTheme === 'warm'
       ? 'bg-[#fdfbf7] text-slate-900'
@@ -328,7 +343,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
         {/* Left Sidebar: Juz / Surah Selector & Bookmark Widget */}
         <div className="lg:col-span-4 space-y-4">
           {/* Bookmark (Ayraç) Box */}
-          <div className="bg-gradient-to-br from-emerald-800 to-teal-900 text-white rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-gradient-to-br from-emerald-800 to-teal-900 dark:from-emerald-950 dark:to-slate-900 text-white rounded-2xl p-4 shadow-sm space-y-3 border border-emerald-700/50 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bookmark className="w-4 h-4 text-amber-400" />
@@ -336,7 +351,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
               </div>
               <button
                 onClick={handleSaveBookmark}
-                className="px-2.5 py-1 rounded-lg bg-emerald-700/90 hover:bg-emerald-600 text-[11px] font-bold transition-all flex items-center gap-1 border border-emerald-500/40 text-emerald-100 shadow-2xs"
+                className="px-2.5 py-1 rounded-lg bg-emerald-700/90 hover:bg-emerald-600 dark:bg-emerald-800 dark:hover:bg-emerald-700 text-[11px] font-bold transition-all flex items-center gap-1 border border-emerald-500/40 text-emerald-100 shadow-2xs"
                 title="Şu an okuduğunuz sayfayı ayraç olarak kaydeder"
               >
                 <Bookmark className="w-3 h-3 text-amber-300" />
@@ -345,12 +360,12 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
             </div>
 
             {savedBookmark ? (
-              <div className="bg-black/20 rounded-xl p-3 flex items-center justify-between border border-white/10">
+              <div className="bg-black/20 dark:bg-black/40 rounded-xl p-3 flex items-center justify-between border border-white/10">
                 <div>
                   <p className="text-xs font-bold text-white">
                     {savedBookmark.juzNumber}. Cüz • Sayfa {savedBookmark.pageNumber}
                   </p>
-                  <span className="text-[10px] text-emerald-200 block mt-0.5">
+                  <span className="text-[10px] text-emerald-200 dark:text-emerald-300 block mt-0.5">
                     Kayıt:{' '}
                     {new Date(savedBookmark.savedAt).toLocaleDateString('tr-TR', {
                       day: 'numeric',
@@ -376,16 +391,16 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
           </div>
 
           {/* Navigation Box (30 Cüz vs 114 Sure) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 space-y-4 max-h-[78vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-4 space-y-4 max-h-[78vh] flex flex-col transition-colors">
             {/* Tab switch */}
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <button
                 onClick={() => {
                   setActiveTab('juz');
                   setViewMode('page');
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'juz' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  activeTab === 'juz' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -397,7 +412,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   setViewMode('surah');
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'surahs' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  activeTab === 'surahs' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -409,20 +424,20 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
             {activeTab === 'juz' ? (
               <div className="overflow-y-auto space-y-3.5 flex-1 pr-1">
                 {/* Current Selected Juz Header & 20 Pages Grid */}
-                <div className="p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 space-y-2">
+                <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Seçili Cüz</span>
-                      <h4 className="text-xs font-bold text-slate-900">{currentJuzRange.name}</h4>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Seçili Cüz</span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">{currentJuzRange.name}</h4>
                     </div>
-                    <span className="text-[11px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded-lg border border-emerald-200">
+                    <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-700">
                       {currentJuzRange.totalPages} Sayfa ({currentJuzRange.startPage} - {currentJuzRange.endPage})
                     </span>
                   </div>
 
                   {/* 20 Pages Quick Grid for this Juz */}
-                  <div className="pt-2 border-t border-emerald-200/70">
-                    <span className="text-[10px] font-semibold text-emerald-900 block mb-1.5">
+                  <div className="pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60">
+                    <span className="text-[10px] font-semibold text-emerald-900 dark:text-emerald-300 block mb-1.5">
                       Cüzün 20 Sayfası (Tıkla ve Oku):
                     </span>
                     <div className="grid grid-cols-5 gap-1.5">
@@ -439,8 +454,8 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                               isCurrent
                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                                 : isBookmarked
-                                ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-                                : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40'
+                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-100'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-emerald-300 hover:bg-emerald-50/40'
                             }`}
                             title={`Sayfa ${pageNum} (${i + 1}. sayfa)`}
                           >
@@ -457,7 +472,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
 
                 {/* 30 Cüz Grid */}
                 <div>
-                  <span className="text-[11px] font-bold text-slate-600 block mb-2">Tüm Cüzler (1 - 30):</span>
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-2">Tüm Cüzler (1 - 30):</span>
                   <div className="grid grid-cols-3 gap-2">
                     {JUZ_PAGE_RANGES.map((juz) => (
                       <button
@@ -466,7 +481,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                         className={`p-2.5 rounded-xl border text-center font-bold text-xs transition-all flex flex-col justify-between ${
                           selectedJuz === juz.juzNumber && viewMode === 'page'
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/40'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40 dark:hover:bg-slate-750'
                         }`}
                       >
                         <span className="block text-[9px] uppercase tracking-wider opacity-75">Cüz</span>
@@ -489,7 +504,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                     placeholder="Sure adı veya numarası ara..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
+                    className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
@@ -500,22 +515,22 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                       onClick={() => handleSelectSurah(surah)}
                       className={`w-full p-3 rounded-xl text-left transition-all flex items-center justify-between border ${
                         viewMode === 'surah' && selectedSurah.number === surah.number
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs font-bold'
-                          : 'bg-white border-transparent hover:bg-slate-50 text-slate-700'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200 shadow-2xs font-bold'
+                          : 'bg-white dark:bg-slate-800/80 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-lg bg-emerald-100/80 text-emerald-800 text-[11px] font-bold flex items-center justify-center">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-100/80 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold flex items-center justify-center">
                           {surah.number}
                         </span>
                         <div>
-                          <span className="text-xs font-bold block">{surah.englishNameTranslation}</span>
+                          <span className="text-xs font-bold block text-slate-900 dark:text-slate-100">{surah.englishNameTranslation}</span>
                           <span className="text-[10px] text-slate-400">
                             {surah.numberOfAyahs} Ayet • {surah.revelationType === 'Meccan' ? 'Mekki' : 'Medeni'}
                           </span>
                         </div>
                       </div>
-                      <span className="font-arabic text-base text-emerald-800">{surah.name}</span>
+                      <span className="font-arabic text-base text-emerald-800 dark:text-emerald-400">{surah.name}</span>
                     </button>
                   ))}
                 </div>
@@ -525,29 +540,29 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
         </div>
 
         {/* Right Area: Authentic Mushaf Page / Reader View */}
-        <div className="lg:col-span-8 bg-slate-100/80 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col overflow-hidden min-h-[85vh]">
+        <div className="lg:col-span-8 bg-slate-100/80 dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden min-h-[85vh] transition-colors">
           {/* Top Reading Header & Controls */}
-          <div className="p-4 bg-white border-b border-slate-200 space-y-3">
+          <div className="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {/* Header Title Info */}
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-2xl bg-amber-700 text-white font-arabic text-lg font-bold flex items-center justify-center shadow-xs">
+                <span className="w-10 h-10 rounded-2xl bg-amber-700 dark:bg-amber-600 text-white font-arabic text-lg font-bold flex items-center justify-center shadow-xs">
                   {viewMode === 'page' ? toArabicDigits(currentPage) : selectedSurah.name.charAt(0)}
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-900">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                       {viewMode === 'page'
                         ? `${selectedJuz}. Cüz — Sayfa ${currentPage}`
                         : `${selectedSurah.englishNameTranslation} Suresi`}
                     </h3>
                     {viewMode === 'page' && (
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/60">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60">
                         {pageIndexInJuz} / {currentJuzRange.totalPages}. Sayfa
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-slate-500 font-medium block mt-0.5">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
                     {viewMode === 'page'
                       ? `${JUZ_ARABIC_NAMES[selectedJuz] || currentJuzRange.name} • ${pageSurahNames || currentJuzRange.startSurahName}`
                       : `${selectedSurah.name} • ${selectedSurah.numberOfAyahs} Ayet`}
@@ -562,7 +577,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
                     isBookmarkedCurrentPage
                       ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                   title="Bu sayfayı ayraç olarak kaydet"
                 >
@@ -575,7 +590,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
                     isPlayingAudio
                       ? 'bg-amber-500 text-white border-amber-500 shadow-xs animate-pulse'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                   }`}
                   title={isPlayingAudio ? 'Tilaveti Durdur' : 'Sayfayı Sesli Dinle'}
                 >
@@ -586,16 +601,16 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
             </div>
 
             {/* Second Row: Kağıt Rengi, Tevâfuk Renklendirmesi, Yazı Boyutu, Sayfa Düzeni */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
               <div className="flex items-center flex-wrap gap-2">
-                {/* Görünüm Modu: Mushaf Sayfası (Resimdeki gibi) vs Ayet Kartları */}
-                <div className="flex items-center bg-slate-100 rounded-xl p-0.5 font-semibold text-slate-700">
+                {/* Görünüm Modu: Mushaf Sayfası vs Ayet Kartları */}
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 font-semibold text-slate-700 dark:text-slate-300">
                   <button
                     onClick={() => setDisplayLayout('mushaf')}
                     className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
                       displayLayout === 'mushaf'
                         ? 'bg-amber-700 text-white font-bold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                     title="Ahmed Hüsrev Hattı - Orijinal Mushaf Sayfa Düzeni"
                   >
@@ -607,7 +622,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                     className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 ${
                       displayLayout === 'cards'
                         ? 'bg-amber-700 text-white font-bold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                     title="Ayet Kartları ve Mealli Görünüm"
                   >
@@ -621,36 +636,36 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   onClick={() => setHighlightTevafuk(!highlightTevafuk)}
                   className={`px-2.5 py-1 rounded-xl border font-bold transition-all flex items-center gap-1.5 ${
                     highlightTevafuk
-                      ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-2xs'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 shadow-2xs'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
                   }`}
                   title="Lafzatullah ve Tevâfuk kelimelerini kırmızı renkle vurgula"
                 >
                   <span className="w-2.5 h-2.5 rounded-full bg-[#d8264e]" />
                   <span>Tevâfuklu (Kırmızı)</span>
-                  {highlightTevafuk && <Check className="w-3 h-3 text-rose-600" />}
+                  {highlightTevafuk && <Check className="w-3 h-3 text-rose-600 dark:text-rose-400" />}
                 </button>
 
-                {/* Kağıt Tonu Seçici (Sarımtırak Saman Kağıdı vs Sıcak vs Beyaz) */}
-                <div className="flex items-center bg-white rounded-xl border border-slate-200 p-0.5">
+                {/* Kağıt Tonu Seçici (Sarımtırak Saman Kağıdı vs Sıcak vs Beyaz vs Gece) */}
+                <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-0.5">
                   <button
                     onClick={() => setPaperTheme('yellowish')}
                     className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
                       paperTheme === 'yellowish'
                         ? 'bg-[#f5ecd0] text-amber-950 border border-amber-400/60 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                     }`}
                     title="Orijinal Sarımtırak Saman Kağıdı Tonu"
                   >
                     <span className="w-2 h-2 rounded-full bg-[#e8dbb0]" />
-                    <span>Sarı Kağıt</span>
+                    <span>Sarı</span>
                   </button>
                   <button
                     onClick={() => setPaperTheme('warm')}
                     className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       paperTheme === 'warm'
-                        ? 'bg-slate-200 text-slate-900 font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                     }`}
                     title="Hafif Krem Kağıt"
                   >
@@ -660,20 +675,32 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                     onClick={() => setPaperTheme('white')}
                     className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all ${
                       paperTheme === 'white'
-                        ? 'bg-slate-200 text-slate-900 font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-bold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                     }`}
                     title="Açık Beyaz Kağıt"
                   >
                     Beyaz
                   </button>
+                  <button
+                    onClick={() => setPaperTheme('dark')}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 ${
+                      paperTheme === 'dark'
+                        ? 'bg-slate-900 text-amber-300 border border-amber-500/60 shadow-2xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                    title="Gece / Koyu Okuma Modu"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-slate-950 border border-amber-400" />
+                    <span>Gece</span>
+                  </button>
                 </div>
 
                 {/* Font Size */}
-                <div className="flex items-center bg-white rounded-xl border border-slate-200 px-2 py-1 gap-1.5 font-bold text-slate-700">
+                <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-2 py-1 gap-1.5 font-bold text-slate-700 dark:text-slate-200">
                   <button
                     onClick={() => setFontSize((f) => Math.max(18, f - 2))}
-                    className="hover:text-amber-700 px-1"
+                    className="hover:text-amber-700 dark:hover:text-amber-400 px-1"
                     title="Yazıyı Küçült"
                   >
                     A-
@@ -681,7 +708,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   <span className="text-[11px]">{fontSize}px</span>
                   <button
                     onClick={() => setFontSize((f) => Math.min(46, f + 2))}
-                    className="hover:text-amber-700 px-1"
+                    className="hover:text-amber-700 dark:hover:text-amber-400 px-1"
                     title="Yazıyı Büyüt"
                   >
                     A+
@@ -694,7 +721,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   className={`px-2.5 py-1 rounded-xl border font-bold transition-all flex items-center gap-1 ${
                     showAllTranslations
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                   title="Türkçe mealleri aç/kapat"
                 >
@@ -705,23 +732,23 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
 
               {/* Page Navigator (Önceki / Sonraki Sayfa) */}
               {viewMode === 'page' && (
-                <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 p-0.5">
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-0.5">
                   <button
                     disabled={currentPage <= 1}
                     onClick={() => handleGoToPage(currentPage - 1)}
-                    className="px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 disabled:opacity-30 font-bold flex items-center gap-0.5 text-slate-700"
+                    className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-750 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 font-bold flex items-center gap-0.5 text-slate-700 dark:text-slate-200"
                     title="Önceki Sayfa"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline text-[11px]">Önceki</span>
                   </button>
                   <div className="px-2 text-center">
-                    <span className="font-bold text-amber-950 text-xs">{currentPage} / 604</span>
+                    <span className="font-bold text-amber-950 dark:text-amber-300 text-xs">{currentPage} / 604</span>
                   </div>
                   <button
                     disabled={currentPage >= 604}
                     onClick={() => handleGoToPage(currentPage + 1)}
-                    className="px-2 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 disabled:opacity-30 font-bold flex items-center gap-0.5 text-slate-700"
+                    className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-750 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 font-bold flex items-center gap-0.5 text-slate-700 dark:text-slate-200"
                     title="Sonraki Sayfa"
                   >
                     <span className="hidden sm:inline text-[11px]">Sonraki</span>
@@ -733,20 +760,20 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
           </div>
 
           {/* Reading Canvas: Authentic Ahmed Husrev Mushaf Page View */}
-          <div className="p-3 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-start bg-slate-200/50">
+          <div className="p-3 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-start bg-slate-200/50 dark:bg-[#080d14] transition-colors">
             {loading ? (
               <div className="py-28 text-center space-y-3">
                 <div className="w-10 h-10 border-3 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                <p className="text-xs text-slate-600 font-semibold">
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">
                   {viewMode === 'page'
                     ? `Sayfa ${currentPage} Hüsrev Tevâfuk Hattı ile hazırlanıyor...`
                     : 'Sure metinleri yükleniyor...'}
                 </p>
               </div>
             ) : loadError ? (
-              <div className="py-20 text-center space-y-3 text-slate-500">
-                <Info className="w-8 h-8 mx-auto text-amber-600" />
-                <p className="text-sm font-semibold text-slate-700">{loadError}</p>
+              <div className="py-20 text-center space-y-3 text-slate-500 dark:text-slate-400">
+                <Info className="w-8 h-8 mx-auto text-amber-600 dark:text-amber-500" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{loadError}</p>
                 <button
                   onClick={() => handleGoToPage(currentPage)}
                   className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs"
@@ -756,7 +783,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                 </button>
               </div>
             ) : ayahs.length === 0 ? (
-              <div className="py-20 text-center space-y-2 text-slate-500">
+              <div className="py-20 text-center space-y-2 text-slate-500 dark:text-slate-400">
                 <Info className="w-8 h-8 mx-auto text-slate-400" />
                 <p className="text-sm font-semibold">Bu sayfada gösterilecek metin bulunamadı.</p>
               </div>
@@ -765,30 +792,49 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                  1. AUTHENTIC MUSHAF PAGE (Resimdeki Ahmet Hüsrev Sayfa Düzeni)
                  ============================================================== */
               <div
-                className={`w-full max-w-3xl rounded-3xl ${paperClass} p-4 sm:p-7 shadow-xl border-4 border-[#bca057] transition-all relative select-text`}
+                className={`w-full max-w-3xl rounded-3xl ${paperClass} p-4 sm:p-7 shadow-xl border-4 ${
+                  paperTheme === 'dark' ? 'border-[#d4af37]' : 'border-[#bca057]'
+                } transition-all relative select-text`}
                 style={{
-                  boxShadow: '0 12px 36px -4px rgba(90, 70, 20, 0.18), inset 0 0 40px rgba(180, 150, 80, 0.12)',
+                  boxShadow:
+                    paperTheme === 'dark'
+                      ? '0 12px 40px -4px rgba(0, 0, 0, 0.7), inset 0 0 50px rgba(212, 175, 55, 0.08)'
+                      : '0 12px 36px -4px rgba(90, 70, 20, 0.18), inset 0 0 40px rgba(180, 150, 80, 0.12)',
                 }}
               >
                 {/* Inner Double Golden Border (Tezhip Çerçevesi) */}
-                <div className="border-2 border-[#b5984d] rounded-2xl p-4 sm:p-6 relative bg-opacity-40">
+                <div
+                  className={`border-2 ${
+                    paperTheme === 'dark' ? 'border-[#d4af37]/70' : 'border-[#b5984d]'
+                  } rounded-2xl p-4 sm:p-6 relative bg-opacity-40`}
+                >
                   {/* Outer Top Page Number & Margin Tezhip Rose */}
-                  <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#b5984d]/40">
+                  <div
+                    className={`flex items-center justify-between pb-3 mb-4 border-b ${
+                      paperTheme === 'dark' ? 'border-[#d4af37]/40 text-[#d4af37]' : 'border-[#b5984d]/40 text-[#78591b]'
+                    }`}
+                  >
                     {/* Top Left: Arabic Numeral Page */}
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#78591b]">
+                    <div className="flex items-center gap-1.5 text-xs font-bold">
                       <span className="text-sm font-arabic">{toArabicDigits(currentPage)}</span>
                       <span className="text-[10px] opacity-75">({currentPage})</span>
                     </div>
 
                     {/* Top Center: Juz Header Banner (اَلْجُزْءُ ...) */}
-                    <div className="px-5 py-1 rounded-xl bg-gradient-to-r from-[#e7d8af] via-[#f7f0dc] to-[#e7d8af] border border-[#b5984d] shadow-2xs text-center">
-                      <span className="font-arabic text-base sm:text-lg font-bold text-[#4a360f] tracking-wider">
+                    <div
+                      className={`px-5 py-1 rounded-xl shadow-2xs text-center border ${
+                        paperTheme === 'dark'
+                          ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-[#d4af37]/70 text-[#f3d987]'
+                          : 'bg-gradient-to-r from-[#e7d8af] via-[#f7f0dc] to-[#e7d8af] border-[#b5984d] text-[#4a360f]'
+                      }`}
+                    >
+                      <span className="font-arabic text-base sm:text-lg font-bold tracking-wider">
                         {JUZ_ARABIC_NAMES[selectedJuz] || `${selectedJuz}. CÜZ`}
                       </span>
                     </div>
 
                     {/* Top Right: Surah Name in Arabic */}
-                    <div className="text-right text-xs font-bold text-[#78591b]">
+                    <div className="text-right text-xs font-bold">
                       <span className="font-arabic text-sm sm:text-base">{ayahs[0]?.surahArabicName || firstSurahOnPage}</span>
                     </div>
                   </div>
@@ -797,7 +843,9 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   <div
                     className={`${
                       fontFamily === 'husrev' ? 'font-husrev' : 'font-arabic'
-                    } text-right text-[#171717] font-medium leading-[2.6] sm:leading-[2.8] tracking-wide text-justify select-text space-y-4`}
+                    } text-right ${
+                      paperTheme === 'dark' ? 'text-slate-100' : 'text-[#171717]'
+                    } font-medium leading-[2.6] sm:leading-[2.8] tracking-wide text-justify select-text space-y-4`}
                     style={{ fontSize: `${fontSize}px` }}
                     dir="rtl"
                   >
@@ -809,20 +857,38 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                         <React.Fragment key={`${ayah.surahNumber}-${ayah.numberInSurah}-${index}`}>
                           {/* If a new surah starts on this page, render authentic Surah Banner */}
                           {ayah.isFirstAyahOfSurah && (
-                            <div className="my-5 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#eddcb4] via-[#fdf9eb] to-[#eddcb4] border-2 border-[#b5984d] text-center shadow-xs select-none">
+                            <div
+                              className={`my-5 p-3 sm:p-4 rounded-2xl border-2 text-center shadow-xs select-none ${
+                                paperTheme === 'dark'
+                                  ? 'bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-[#d4af37] text-amber-200'
+                                  : 'bg-gradient-to-r from-[#eddcb4] via-[#fdf9eb] to-[#eddcb4] border-[#b5984d] text-[#4a360f]'
+                              }`}
+                            >
                               <div className="flex items-center justify-center gap-2">
-                                <span className="text-xs font-bold text-[#78591b] uppercase tracking-wider">
+                                <span
+                                  className={`text-xs font-bold uppercase tracking-wider ${
+                                    paperTheme === 'dark' ? 'text-amber-300' : 'text-[#78591b]'
+                                  }`}
+                                >
                                   {ayah.surahTurkishName} Suresi
                                 </span>
-                                <span className="font-arabic text-lg sm:text-xl font-bold text-[#4a360f]">
+                                <span className="font-arabic text-lg sm:text-xl font-bold">
                                   سُورَةُ {ayah.surahArabicName}
                                 </span>
                               </div>
 
                               {/* Bismillah Header */}
                               {ayah.surahNumber !== 9 && ayah.surahNumber !== 1 && (
-                                <div className="pt-2 border-t border-[#b5984d]/40 mt-2">
-                                  <span className="font-arabic text-2xl sm:text-3xl text-[#1e1b18] font-semibold block leading-loose">
+                                <div
+                                  className={`pt-2 border-t mt-2 ${
+                                    paperTheme === 'dark' ? 'border-[#d4af37]/40' : 'border-[#b5984d]/40'
+                                  }`}
+                                >
+                                  <span
+                                    className={`font-arabic text-2xl sm:text-3xl font-semibold block leading-loose ${
+                                      paperTheme === 'dark' ? 'text-amber-100' : 'text-[#1e1b18]'
+                                    }`}
+                                  >
                                     بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
                                   </span>
                                 </div>
@@ -842,16 +908,26 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                           {/* Inline translation if revealed */}
                           {isMealVisible && ayah.turkishTranslation && (
                             <div
-                              className="my-3 p-3 rounded-xl bg-amber-100/70 border border-amber-300 text-left text-xs sm:text-sm text-slate-800 font-normal leading-relaxed not-italic select-text"
+                              className={`my-3 p-3 rounded-xl border text-left text-xs sm:text-sm font-normal leading-relaxed not-italic select-text ${
+                                paperTheme === 'dark'
+                                  ? 'bg-slate-800/90 border-slate-700 text-slate-200'
+                                  : 'bg-amber-100/70 border-amber-300 text-slate-800'
+                              }`}
                               dir="ltr"
                             >
-                              <div className="flex items-center justify-between font-bold text-amber-900 text-[11px] mb-1">
+                              <div
+                                className={`flex items-center justify-between font-bold text-[11px] mb-1 ${
+                                  paperTheme === 'dark' ? 'text-amber-300' : 'text-amber-900'
+                                }`}
+                              >
                                 <span>
                                   {ayah.surahTurkishName} : {ayah.numberInSurah}. Ayet Meali
                                 </span>
                                 <button
                                   onClick={() => toggleSingleTranslation(index)}
-                                  className="text-amber-800 hover:text-amber-950 text-[10px]"
+                                  className={`${
+                                    paperTheme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-amber-800 hover:text-amber-950'
+                                  } text-[10px]`}
                                 >
                                   ✕ Kapat
                                 </button>
@@ -865,7 +941,11 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                   </div>
 
                   {/* Bottom Page Indicator Footer */}
-                  <div className="flex items-center justify-between pt-4 mt-5 border-t border-[#b5984d]/40 text-xs text-[#78591b] font-medium">
+                  <div
+                    className={`flex items-center justify-between pt-4 mt-5 border-t text-xs font-medium ${
+                      paperTheme === 'dark' ? 'border-[#d4af37]/40 text-[#d4af37]' : 'border-[#b5984d]/40 text-[#78591b]'
+                    }`}
+                  >
                     <span className="font-bold">{currentPage}</span>
                     <span className="text-[11px] opacity-80">
                       {selectedJuz}. Cüz — Sayfa {pageIndexInJuz} / {currentJuzRange.totalPages}
@@ -887,12 +967,22 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                     <div key={`${ayah.surahNumber}-${ayah.numberInSurah}-${index}`} className="space-y-3">
                       {/* Surah Header if first ayah */}
                       {ayah.isFirstAyahOfSurah && (
-                        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#eddcb4] via-[#fbf7ea] to-[#eddcb4] border-2 border-[#b5984d] text-center shadow-xs">
-                          <h4 className="text-sm font-bold text-[#4a360f]">
+                        <div
+                          className={`p-4 rounded-2xl border-2 text-center shadow-xs ${
+                            paperTheme === 'dark'
+                              ? 'bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-[#d4af37] text-amber-200'
+                              : 'bg-gradient-to-r from-[#eddcb4] via-[#fbf7ea] to-[#eddcb4] border-[#b5984d] text-[#4a360f]'
+                          }`}
+                        >
+                          <h4 className="text-sm font-bold">
                             {ayah.surahTurkishName} Suresi ({ayah.surahArabicName})
                           </h4>
                           {ayah.surahNumber !== 9 && ayah.surahNumber !== 1 && (
-                            <span className="font-arabic text-2xl text-[#1e1b18] block mt-1">
+                            <span
+                              className={`font-arabic text-2xl block mt-1 ${
+                                paperTheme === 'dark' ? 'text-amber-100' : 'text-[#1e1b18]'
+                              }`}
+                            >
                               بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
                             </span>
                           )}
@@ -903,24 +993,32 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                       <div
                         className={`p-5 rounded-2xl ${paperClass} border-2 transition-all space-y-3 shadow-sm ${
                           isPlayingThisAyah
-                            ? 'border-amber-500 bg-amber-100/50 ring-2 ring-amber-400/40'
+                            ? 'border-amber-500 bg-amber-100/50 dark:bg-amber-950/40 ring-2 ring-amber-400/40'
+                            : paperTheme === 'dark'
+                            ? 'border-slate-800'
                             : 'border-[#c9ae64]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex flex-col items-center gap-1.5 shrink-0 mt-1">
-                            <span className="w-8 h-8 rounded-xl bg-[#eadeba] text-[#5e4411] border border-[#b5984d] text-xs font-bold flex items-center justify-center">
+                            <span
+                              className={`w-8 h-8 rounded-xl border text-xs font-bold flex items-center justify-center ${
+                                paperTheme === 'dark'
+                                  ? 'bg-slate-800 text-amber-300 border-[#d4af37]/60'
+                                  : 'bg-[#eadeba] text-[#5e4411] border-[#b5984d]'
+                              }`}
+                            >
                               {ayah.numberInSurah}
                             </span>
-                            <span className="text-[9px] text-slate-500 font-medium">{ayah.surahTurkishName}</span>
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">{ayah.surahTurkishName}</span>
 
                             {!showAllTranslations && ayah.turkishTranslation && (
                               <button
                                 onClick={() => toggleSingleTranslation(index)}
                                 className={`mt-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 border ${
                                   isMealRevealed
-                                    ? 'bg-amber-200 text-amber-950 border-amber-400'
-                                    : 'bg-white/80 text-slate-700 hover:bg-amber-100 border-slate-300'
+                                    ? 'bg-amber-200 dark:bg-amber-900 text-amber-950 dark:text-amber-100 border-amber-400 dark:border-amber-700'
+                                    : 'bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-700'
                                 }`}
                               >
                                 <Languages className="w-3 h-3" />
@@ -932,7 +1030,9 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                           <div
                             className={`${
                               fontFamily === 'husrev' ? 'font-husrev' : 'font-arabic'
-                            } text-right text-slate-900 font-medium leading-[2.5] tracking-wide flex-1 select-text`}
+                            } text-right ${
+                              paperTheme === 'dark' ? 'text-slate-100' : 'text-slate-900'
+                            } font-medium leading-[2.5] tracking-wide flex-1 select-text`}
                             style={{ fontSize: `${fontSize}px` }}
                             dir="rtl"
                           >
@@ -942,12 +1042,22 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
 
                         {/* Turkish Meal */}
                         {isMealRevealed && ayah.turkishTranslation && (
-                          <div className="pt-3 border-t border-amber-300/60 bg-amber-50/80 p-3 rounded-xl">
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-900 mb-1">
+                          <div
+                            className={`pt-3 border-t p-3 rounded-xl ${
+                              paperTheme === 'dark'
+                                ? 'border-slate-800 bg-slate-800/80 text-slate-200'
+                                : 'border-amber-300/60 bg-amber-50/80 text-slate-700'
+                            }`}
+                          >
+                            <div
+                              className={`flex items-center gap-1.5 text-[10px] font-bold mb-1 ${
+                                paperTheme === 'dark' ? 'text-amber-300' : 'text-amber-900'
+                              }`}
+                            >
                               <FileText className="w-3 h-3" />
                               <span>Diyanet Meali:</span>
                             </div>
-                            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
+                            <p className="text-xs sm:text-sm leading-relaxed font-normal">
                               {ayah.turkishTranslation}
                             </p>
                           </div>
@@ -961,24 +1071,24 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
 
             {/* Bottom Page Navigation Bar: Next / Prev Page */}
             {viewMode === 'page' && (
-              <div className="w-full max-w-3xl pt-6 mt-4 border-t border-slate-300/80 flex items-center justify-between gap-3">
+              <div className="w-full max-w-3xl pt-6 mt-4 border-t border-slate-300/80 dark:border-slate-800 flex items-center justify-between gap-3 transition-colors">
                 <button
                   disabled={currentPage <= 1}
                   onClick={() => {
                     handleGoToPage(currentPage - 1);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 disabled:opacity-30 flex items-center gap-2 shadow-xs"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 disabled:opacity-30 flex items-center gap-2 shadow-xs"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Önceki Sayfa ({currentPage > 1 ? currentPage - 1 : 1})</span>
                 </button>
 
                 <div className="text-center">
-                  <span className="text-xs font-bold text-slate-900 block">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">
                     {selectedJuz}. Cüz — Sayfa {pageIndexInJuz} / {currentJuzRange.totalPages}
                   </span>
-                  <span className="text-[10px] text-slate-500">Toplam Kur'an Sayfası: {currentPage} / 604</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Toplam Kur'an Sayfası: {currentPage} / 604</span>
                 </div>
 
                 <button
@@ -987,7 +1097,7 @@ export const QuranReader: React.FC<QuranReaderProps> = ({
                     handleGoToPage(currentPage + 1);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-2 shadow-xs"
+                  className="px-4 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-700 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-2 shadow-xs"
                 >
                   <span>Sonraki Sayfa ({currentPage < 604 ? currentPage + 1 : 604})</span>
                   <ChevronRight className="w-4 h-4" />

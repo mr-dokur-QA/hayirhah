@@ -131,7 +131,7 @@ export function renderTevafukText(
           return (
             <span
               key={idx}
-              className="text-[#d8264e] font-bold inline-block hover:scale-105 transition-transform"
+              className="text-[#d8264e] dark:text-[#ff4d6d] font-bold inline-block hover:scale-105 transition-transform"
               title="Lafzatullah (Tevâfuk)"
             >
               {word}
@@ -143,7 +143,7 @@ export function renderTevafukText(
           return (
             <span
               key={idx}
-              className="text-[#c53030] text-[0.75em] font-semibold align-super px-0.5 opacity-90 inline-block"
+              className="text-[#c53030] dark:text-[#f87171] text-[0.75em] font-semibold align-super px-0.5 opacity-90 inline-block"
             >
               {word}
             </span>
@@ -161,12 +161,12 @@ export function renderTevafukText(
           <span className="relative inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8">
             {/* Ornate Gold Rosette SVG */}
             <svg
-              className="w-full h-full text-[#c59e47] drop-shadow-xs"
+              className="w-full h-full text-[#c59e47] dark:text-amber-400 drop-shadow-xs"
               viewBox="0 0 36 36"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <circle cx="18" cy="18" r="15" stroke="currentColor" strokeWidth="1.6" fill="#faf5e4" />
+              <circle cx="18" cy="18" r="15" stroke="currentColor" strokeWidth="1.6" className="fill-[#faf5e4] dark:fill-slate-900" />
               <circle cx="18" cy="18" r="12" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.5 1.5" />
               {/* Petals / Rays */}
               <circle cx="18" cy="3" r="1.5" fill="currentColor" />
@@ -174,7 +174,7 @@ export function renderTevafukText(
               <circle cx="3" cy="18" r="1.5" fill="currentColor" />
               <circle cx="33" cy="18" r="1.5" fill="currentColor" />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-arabic text-[11px] sm:text-xs font-bold text-[#78591b]">
+            <span className="absolute inset-0 flex items-center justify-center font-arabic text-[11px] sm:text-xs font-bold text-[#78591b] dark:text-amber-300">
               {toArabicDigits(ayahNumber)}
             </span>
           </span>

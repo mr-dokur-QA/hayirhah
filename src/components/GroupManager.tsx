@@ -8,7 +8,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { Group, GroupType, User } from '../types';
+import { Group, GroupTask, GroupType, User } from '../types';
 import { ApiService, formatUserHandle } from '../services/api';
 import confetti from 'canvas-confetti';
 
@@ -41,46 +41,68 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
   const [assigneeHandleInput, setAssigneeHandleInput] = useState<string>('');
   const [showCharts, setShowCharts] = useState<boolean>(true);
 
-  // Compute analytics and recharts datasets
+  const isTaskOwnedByCurrentUser = (task: GroupTask) => {
+    if (task.status === 'available') return false;
+    const user = currentUser || ApiService.getCurrentUser();
+    const currentUserId = user?.id;
+    const currentUserHandle = user?.username ? formatUserHandle(user.username).toLowerCase() : '@siz';
+
+    if (task.assignedTo === 'current-user' || (currentUserId && task.assignedTo === currentUserId)) return true;
+    if (task.assignedToUsername) {
+      const handle = task.assignedToUsername.toLowerCase();
+      if (handle === '@siz' || handle === currentUserHandle) return true;
+      if (user?.username && handle.replace('@', '') === user.username.replace('@', '').toLowerCase()) return true;
+    }
+    return false;
+  };
+
+  // Compute analytics specifically for the current user's assigned cüzs across all hatims
   const analyticsData = useMemo(() => {
-    let totalCompletedTasks = 0;
-    let totalAssignedTasks = 0;
-    let totalAvailableTasks = 0;
-    let totalMembers = 0;
-    let totalProgressSum = 0;
-    let totalTargetSum = 0;
+    // Filter ONLY tasks taken by the current user across all groups
+    const myTakenTasks: Array<{ task: GroupTask; groupTitle: string; groupType: GroupType; groupId: string }> = [];
 
     groups.forEach((g) => {
-      totalMembers += g.membersCount || 1;
-      totalProgressSum += g.currentProgress || 0;
-      totalTargetSum += g.targetCount || 1;
-
       if (g.tasks && g.tasks.length > 0) {
         g.tasks.forEach((t) => {
-          if (t.status === 'completed') totalCompletedTasks++;
-          else if (t.status === 'assigned') totalAssignedTasks++;
-          else totalAvailableTasks++;
+          if (isTaskOwnedByCurrentUser(t)) {
+            myTakenTasks.push({
+              task: t,
+              groupTitle: g.title,
+              groupType: g.type,
+              groupId: g.id,
+            });
+          }
         });
       }
     });
 
-    const overallPieData = [
-      { name: 'Okunan Cüzler', value: totalCompletedTasks || 12, color: '#10b981' },
-      { name: 'Okunmakta Olan', value: totalAssignedTasks || 6, color: '#f59e0b' },
-      { name: 'Müsait / Boş', value: totalAvailableTasks || 12, color: '#cbd5e1' },
-    ];
+    const myCompletedTasks = myTakenTasks.filter((item) => item.task.status === 'completed');
+    const myPendingTasks = myTakenTasks.filter((item) => item.task.status === 'assigned');
+    const totalMyTasks = myTakenTasks.length;
+    const distinctGroupsCount = new Set(myTakenTasks.map((item) => item.groupId)).size;
 
-    const averageCompletion = totalTargetSum > 0 ? Math.min(100, Math.round((totalProgressSum / totalTargetSum) * 100)) : 0;
+    // Pie chart: ONLY user's taken tasks (Completed vs In Progress). No unassigned tasks!
+    const myPieData: Array<{ name: string; value: number; color: string }> = [];
+    if (myCompletedTasks.length > 0) {
+      myPieData.push({ name: 'Okunan / Biten Cüzler', value: myCompletedTasks.length, color: '#10b981' });
+    }
+    if (myPendingTasks.length > 0) {
+      myPieData.push({ name: 'Okunmakta Olan Cüzler', value: myPendingTasks.length, color: '#f59e0b' });
+    }
+
+    // Completion percentage: (myCompletedTasks / totalMyTasks) * 100
+    const myCompletionPercentage = totalMyTasks > 0 ? Math.round((myCompletedTasks.length / totalMyTasks) * 100) : 0;
 
     return {
-      overallPieData,
-      totalCompletedTasks,
-      totalAssignedTasks,
-      totalAvailableTasks,
-      totalMembers,
-      averageCompletion,
+      myPieData,
+      myTakenTasks,
+      myCompletedCount: myCompletedTasks.length,
+      myPendingCount: myPendingTasks.length,
+      totalMyTasks,
+      distinctGroupsCount,
+      myCompletionPercentage,
     };
-  }, [groups]);
+  }, [groups, currentUser]);
 
   const refreshGroups = () => {
     const loaded = ApiService.getGroups();
@@ -181,6 +203,11 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
       actorName: currentUser?.username ? formatUserHandle(currentUser.username) : 'Bir kardeşimiz',
       taskTitle: `${taskIndex}. Cüz / Bölüm`,
     });
+  };
+
+  const handleUncompleteTask = (groupId: string, taskIndex: number) => {
+    ApiService.uncompleteTask(groupId, taskIndex);
+    refreshGroups();
   };
 
   const handleAddCommitment = (groupId: string) => {
@@ -298,7 +325,7 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
         </button>
       </div>
 
-      {/* Visual Analytics & Recharts Trend Section */}
+      {/* Visual Analytics & Recharts Trend Section - Strictly for User's Assigned Cüzs */}
       {showCharts && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Header & Quick KPI Badges */}
@@ -308,9 +335,9 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                 <PieChartIcon className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Halkalar İlerleme & Dağılım Analizi</h3>
+                <h3 className="text-sm font-bold text-slate-900">Kişisel Cüz Takip & İlerleme Analizi</h3>
                 <p className="text-[11px] text-slate-500">
-                  Aktif Hatim cüzleri ve dua halkalarının anlık doluluk ve tamamlanma trendleri
+                  Farklı hatimlerden üzerinize aldığınız cüzlerin anlık tamamlanma ve okuma durumu
                 </p>
               </div>
             </div>
@@ -318,79 +345,93 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
             {/* Quick Metrics */}
             <div className="flex items-center gap-2">
               <div className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-900 text-center">
-                <span className="text-[10px] text-emerald-700 block font-semibold">Toplam Katılımcı</span>
-                <span className="text-sm font-extrabold">{analyticsData.totalMembers} Kardeş</span>
+                <span className="text-[10px] text-emerald-700 block font-semibold">Aldığınız Cüzler</span>
+                <span className="text-sm font-extrabold">{analyticsData.totalMyTasks} Cüz ({analyticsData.distinctGroupsCount} Hatim)</span>
               </div>
               <div className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 text-center">
-                <span className="text-[10px] text-amber-700 block font-semibold">Ort. Tamamlanma</span>
-                <span className="text-sm font-extrabold">%{analyticsData.averageCompletion}</span>
+                <span className="text-[10px] text-amber-700 block font-semibold">Tamamlanma Oranı</span>
+                <span className="text-sm font-extrabold">%{analyticsData.myCompletionPercentage}</span>
               </div>
             </div>
           </div>
 
           {/* Charts Grid */}
           <div className="grid grid-cols-1 gap-5 items-stretch">
-            {/* Pie Chart: Cüz & Görev Dağılımı */}
+            {/* Pie Chart: SADECE Kullanıcının Aldığı Cüzler */}
             <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <PieChartIcon className="w-3.5 h-3.5 text-emerald-600" />
-                  Cüz Dağılımı (Hatm-i Şerifler)
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                  Üzerinize Aldığınız Cüzlerin Dağılımı
                 </span>
-                <span className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-500 font-semibold">
-                  {analyticsData.totalCompletedTasks + analyticsData.totalAssignedTasks + analyticsData.totalAvailableTasks} Toplam Parça
+                <span className="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-600 font-semibold">
+                  {analyticsData.totalMyTasks} Alınan Cüz ({analyticsData.myCompletedCount} Biten)
                 </span>
               </div>
 
-              <div className="h-56 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyticsData.overallPieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={75}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {analyticsData.overallPieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(val: any, name: any) => [`${val} Cüz / Bölüm`, name]}
-                      contentStyle={{
-                        borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={32}
-                      formatter={(value) => <span className="text-[11px] font-semibold text-slate-700">{value}</span>}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {analyticsData.totalMyTasks > 0 ? (
+                <>
+                  <div className="h-56 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={analyticsData.myPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={75}
+                          paddingAngle={analyticsData.myPieData.length > 1 ? 3 : 0}
+                          dataKey="value"
+                        >
+                          {analyticsData.myPieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(val: any, name: any) => [`${val} Cüz`, name]}
+                          contentStyle={{
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            fontSize: '12px',
+                            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={32}
+                          formatter={(value) => <span className="text-[11px] font-semibold text-slate-700">{value}</span>}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
 
-              {/* Mini Legend Summary */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center">
-                <div className="p-1.5 rounded-lg bg-emerald-100/60 text-emerald-900">
-                  <span className="text-[9px] font-bold block uppercase">Okunan</span>
-                  <span className="text-xs font-extrabold">{analyticsData.totalCompletedTasks}</span>
+                  {/* Mini Legend Summary */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center">
+                    <div className="p-2 rounded-lg bg-emerald-100/70 border border-emerald-200 text-emerald-900">
+                      <span className="text-[9px] font-bold block uppercase tracking-wider text-emerald-700">Okunan / Biten</span>
+                      <span className="text-sm font-extrabold">{analyticsData.myCompletedCount} Cüz</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-100/70 border border-amber-200 text-amber-900">
+                      <span className="text-[9px] font-bold block uppercase tracking-wider text-amber-700">Okunmakta Olan</span>
+                      <span className="text-sm font-extrabold">{analyticsData.myPendingCount} Cüz</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-emerald-700 text-white shadow-xs">
+                      <span className="text-[9px] font-bold block uppercase tracking-wider text-emerald-200">Başarı Oranı</span>
+                      <span className="text-sm font-extrabold">%{analyticsData.myCompletionPercentage}</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-8 px-4 text-center space-y-2">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-800">Henüz üzerinize aldığınız bir cüz bulunmuyor</h4>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                    Aşağıdaki Hatm-i Şerif halkalarından dilediğiniz cüzü seçip üzerinize alarak kişisel okuma yüzdenizi buradan takip edebilirsiniz.
+                  </p>
                 </div>
-                <div className="p-1.5 rounded-lg bg-amber-100/60 text-amber-900">
-                  <span className="text-[9px] font-bold block uppercase">Alınan</span>
-                  <span className="text-xs font-extrabold">{analyticsData.totalAssignedTasks}</span>
-                </div>
-                <div className="p-1.5 rounded-lg bg-slate-200/70 text-slate-800">
-                  <span className="text-[9px] font-bold block uppercase">Müsait</span>
-                  <span className="text-xs font-extrabold">{analyticsData.totalAvailableTasks}</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -561,7 +602,7 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                     {selectedGroup.tasks.map((task) => {
                       const isCompleted = task.status === 'completed';
                       const isAssigned = task.status === 'assigned';
-                      const isMyTask = task.assignedTo === (currentUser?.id || 'current-user');
+                      const isMyTask = isTaskOwnedByCurrentUser(task);
                       const isAssigningThis = assigningTaskIndex === task.taskIndex;
                       const isHatimGroup = selectedGroup.type === 'hatim';
 
@@ -615,19 +656,38 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
 
                           <div className="mt-3 pt-2 border-t border-slate-100">
                             {isCompleted ? (
-                              <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3" /> Okundu
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Okundu
+                                </span>
+                                {isMyTask && (
+                                  <button
+                                    onClick={() => handleUncompleteTask(selectedGroup.id, task.taskIndex)}
+                                    className="text-[10px] text-slate-500 hover:text-red-600 hover:underline transition-colors px-1 font-medium"
+                                    title="Tamamlanma işaretini geri al"
+                                  >
+                                    Geri Al
+                                  </button>
+                                )}
+                              </div>
                             ) : isAssigned ? (
                               isMyTask ? (
-                                <button
-                                  onClick={() => handleCompleteTask(selectedGroup.id, task.taskIndex)}
-                                  className="w-full py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors shadow-2xs"
-                                >
-                                  Tamamla ✓
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleCompleteTask(selectedGroup.id, task.taskIndex)}
+                                    className="w-full py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-[11px] transition-all shadow-2xs flex items-center justify-center gap-1"
+                                    title={`${task.title} tilavetini tamamlandı olarak işaretle`}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Tamamla ✓</span>
+                                  </button>
+                                </div>
                               ) : (
-                                <span className="text-[10px] text-amber-700 font-medium">Okunuyor...</span>
+                                <div className="flex items-center justify-between py-1">
+                                  <span className="text-[11px] text-amber-700 font-medium flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" /> Okunuyor...
+                                  </span>
+                                </div>
                               )
                             ) : isAssigningThis ? (
                               /* Specific @Handle input form */
@@ -660,10 +720,10 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => handleAssignTask(selectedGroup.id, task.taskIndex)}
-                                  className="flex-1 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-[11px] transition-colors"
+                                  className="flex-1 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-[11px] transition-colors flex items-center justify-center gap-1"
                                 >
                                   Cüzü Al
                                 </button>
@@ -672,7 +732,7 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                                     setAssigningTaskIndex(task.taskIndex);
                                     setAssigneeHandleInput('');
                                   }}
-                                  className="p-1 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium"
+                                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium"
                                   title="@Kullanıcıya Ata"
                                 >
                                   <AtSign className="w-3.5 h-3.5 text-emerald-700" />
