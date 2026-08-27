@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Plus, KeyRound, CheckCircle2, Clock, Sparkles, BookOpen, Share2, ArrowRight, ShieldCheck, Heart, PieChart as PieChartIcon, TrendingUp, ChevronDown, ChevronUp, UserCheck, AtSign, Shield, Lock } from 'lucide-react';
+import { Users, Plus, KeyRound, CheckCircle2, Clock, Sparkles, BookOpen, Share2, ArrowRight, ShieldCheck, Heart, PieChart as PieChartIcon, TrendingUp, ChevronDown, ChevronUp, UserCheck, AtSign, Shield, Lock, Award, LayoutGrid, CircleDot, MessageSquareHeart } from 'lucide-react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -10,6 +10,9 @@ import {
 } from 'recharts';
 import { Group, GroupTask, GroupType, User } from '../types';
 import { ApiService, formatUserHandle } from '../services/api';
+import { CircularJuzRing } from './CircularJuzRing';
+import { GroupPrayerRequests } from './GroupPrayerRequests';
+import { HatimCelebrationModal } from './HatimCelebrationModal';
 import confetti from 'canvas-confetti';
 
 interface GroupManagerProps {
@@ -18,8 +21,11 @@ interface GroupManagerProps {
 }
 
 export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJuzInQuranReader }) => {
+  const [activeMainTab, setActiveMainTab] = useState<'groups' | 'requests'>('groups');
   const [groups, setGroups] = useState<Group[]>(() => ApiService.getGroups());
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [taskViewMode, setTaskViewMode] = useState<'ring' | 'list'>('ring');
+  const [celebrationGroup, setCelebrationGroup] = useState<Group | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
 
   // Modals
@@ -196,6 +202,9 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
     const group = groups.find((g) => g.id === groupId);
     const currentUser = ApiService.getCurrentUser();
     const isFinished = updated && updated.currentProgress >= updated.targetCount;
+    if (isFinished) {
+      setCelebrationGroup(updated || group || null);
+    }
     ApiService.sendGroupNotificationEvent({
       groupId,
       groupTitle: group?.title || 'Dua Halkası',
@@ -213,15 +222,19 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
   const handleAddCommitment = (groupId: string) => {
     if (commitCount <= 0) return;
     const memberHandle = commitMemberHandle.trim() ? formatUserHandle(commitMemberHandle) : undefined;
-    ApiService.addNumberedAssignment(groupId, commitCount, memberHandle);
+    const updated = ApiService.addNumberedAssignment(groupId, commitCount, memberHandle);
     refreshGroups();
     const group = groups.find((g) => g.id === groupId);
     const currentUser = ApiService.getCurrentUser();
+    const isFinished = updated && updated.currentProgress >= updated.targetCount;
+    if (isFinished) {
+      setCelebrationGroup(updated || group || null);
+    }
     const actor = memberHandle || (currentUser?.username ? formatUserHandle(currentUser.username) : 'Bir kardeşimiz');
     ApiService.sendGroupNotificationEvent({
       groupId,
       groupTitle: group?.title || 'Dua Halkası',
-      eventType: 'task_assigned',
+      eventType: isFinished ? 'group_completed' : 'task_assigned',
       actorName: actor,
       taskTitle: `${commitCount} adet zikir/dua`,
     });
@@ -230,12 +243,16 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
   };
 
   const handleUpdateCommitment = (groupId: string, assignmentId: string, delta: number) => {
-    ApiService.updateNumberedProgress(groupId, assignmentId, delta);
+    const updated = ApiService.updateNumberedProgress(groupId, assignmentId, delta);
     refreshGroups();
     confetti({
       particleCount: 30,
       spread: 40,
     });
+    if (updated && updated.currentProgress >= updated.targetCount) {
+      const group = groups.find((g) => g.id === groupId);
+      setCelebrationGroup(updated || group || null);
+    }
   };
 
   const filteredGroups = groups.filter((g) => {
@@ -258,13 +275,13 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
   return (
     <div className="space-y-6">
       {/* Top Banner & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-900 to-teal-800 text-white p-6 rounded-2xl shadow-lg border border-emerald-700/50">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-900 via-emerald-850 to-teal-900 text-white p-6 rounded-3xl shadow-lg border border-emerald-700/50">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
             <Heart className="w-3.5 h-3.5 fill-emerald-300" />
             <span>Mümin Kardeşliği</span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">Hatim ve Dua Halkaları</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Hatim ve Dua Meclisleri</h2>
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
             "Mü'minin mü'mine gıyabında yaptığı dua en çabuk kabul olan duadır." (Tirmizî). Kardeşlerinizle hatim, tefriciye ve zikir halkalarında buluşun.
           </p>
@@ -290,6 +307,40 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
           </button>
         </div>
       </div>
+
+      {/* Main Dual Feature Navigation Tabs */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveMainTab('groups')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            activeMainTab === 'groups'
+              ? 'bg-white dark:bg-slate-900 text-emerald-900 dark:text-emerald-300 shadow-xs border border-slate-200/80 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-emerald-600" />
+          <span>Dua & Hatim Halkaları ({groups.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMainTab('requests')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            activeMainTab === 'requests'
+              ? 'bg-white dark:bg-slate-900 text-rose-900 dark:text-rose-300 shadow-xs border border-slate-200/80 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+          }`}
+        >
+          <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+          <span>Kardeşimin Duasına Âmin (Dua Talepleri)</span>
+        </button>
+      </div>
+
+      {/* TAB CONTENT 1: Dua Talepleri View */}
+      {activeMainTab === 'requests' ? (
+        <GroupPrayerRequests currentUser={currentUser} />
+      ) : (
+        /* TAB CONTENT 2: Groups & Hatim Circles View */
+        <div className="space-y-6">
 
       {/* Filter Tabs & Chart Toggle */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2">
@@ -503,35 +554,53 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
           );
         })}
       </div>
+    </div>
+      )}
 
-      {/* Group Detail Modal */}
+      {/* Group Detail Modal with Circular & List View */}
       {selectedGroup && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150 border border-slate-200 my-auto">
             {/* Modal Header */}
-            <div className="p-5 bg-gradient-to-r from-emerald-800 to-teal-800 text-white flex items-start justify-between gap-4">
-              <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/20 text-white uppercase tracking-wider">
-                  {getTypeBadge(selectedGroup.type).label}
-                </span>
-                <h3 className="text-xl font-bold mt-1 text-white">{selectedGroup.title}</h3>
-                <p className="text-xs text-emerald-100 mt-0.5">{selectedGroup.description}</p>
+            <div className="p-5 bg-gradient-to-r from-emerald-900 via-emerald-850 to-teal-900 text-white flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white/20 text-white uppercase tracking-wider">
+                    {getTypeBadge(selectedGroup.type).label}
+                  </span>
+                  <span className="text-emerald-200 text-xs font-mono font-bold">
+                    #{selectedGroup.inviteCode}
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white">{selectedGroup.title}</h3>
+                <p className="text-xs text-emerald-100/90">{selectedGroup.description}</p>
               </div>
 
-              <button
-                onClick={() => setSelectedGroup(null)}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCelebrationGroup(selectedGroup)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs shadow-md shadow-amber-400/20 flex items-center gap-1.5 transition-all"
+                  title="Hatim Duası ve Beraat Kartı"
+                >
+                  <Award className="w-4 h-4 text-emerald-950" />
+                  <span className="hidden sm:inline">Hatim Duası & Beratı</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedGroup(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
-            {/* Modal Progress Info & Visual Chart */}
-            <div className="p-4 bg-emerald-50/70 border-b border-emerald-100 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-600 font-medium">Davet Kodu:</span>
-                  <span className="font-mono font-bold text-emerald-900 bg-white px-2.5 py-1 rounded-md border border-emerald-200 shadow-2xs">
+            {/* Modal Subheader: Progress & View Mode Switcher */}
+            <div className="p-4 bg-emerald-50/80 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 font-medium">Davet Kodu:</span>
+                  <span className="font-mono font-bold text-emerald-950 bg-white px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
                     {selectedGroup.inviteCode}
                   </span>
                   <button
@@ -546,202 +615,221 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-500 font-medium">Kurucu:</span>
-                  <span className="font-mono font-bold text-emerald-800 text-[11px] bg-white px-2 py-0.5 rounded-md border border-emerald-200">
-                    {selectedGroup.creatorUsername ? formatUserHandle(selectedGroup.creatorUsername) : '@kardes'}
-                  </span>
-                </div>
-
                 <div className="font-bold text-emerald-950">
-                  {selectedGroup.currentProgress} / {selectedGroup.targetCount} Tamamlandı (%
+                  {selectedGroup.currentProgress} / {selectedGroup.targetCount} (%
                   {Math.min(100, Math.round((selectedGroup.currentProgress / selectedGroup.targetCount) * 100))})
                 </div>
               </div>
 
-              {/* Visual Progress Bar with milestones */}
-              <div className="space-y-1.5">
-                <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden shadow-inner flex">
-                  <div
-                    className="h-full bg-emerald-600 transition-all duration-500 rounded-full flex items-center justify-end pr-1 text-[9px] font-bold text-white shadow-xs"
-                    style={{
-                      width: `${Math.min(100, Math.round((selectedGroup.currentProgress / selectedGroup.targetCount) * 100))}%`,
-                    }}
-                  />
+              {/* View Switcher for Task-based groups */}
+              {selectedGroup.tasks && selectedGroup.tasks.length > 0 && (
+                <div className="flex items-center gap-1 p-1 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                  <button
+                    onClick={() => setTaskViewMode('ring')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      taskViewMode === 'ring'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-emerald-800'
+                    }`}
+                  >
+                    <CircleDot className="w-3.5 h-3.5" />
+                    <span>Dairesel Meclis</span>
+                  </button>
+                  <button
+                    onClick={() => setTaskViewMode('list')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      taskViewMode === 'list'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-emerald-800'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Liste Görünümü</span>
+                  </button>
                 </div>
-                <div className="flex justify-between text-[10px] text-slate-500 font-medium px-0.5">
-                  <span>0 Başlangıç</span>
-                  <span>Hedef: {selectedGroup.targetCount} {selectedGroup.tasks ? 'Cüz' : 'Adet'}</span>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Modal Body - Tasks vs Numbered assignments */}
+            {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {/* Sectioned Types (Hatim 30 Cüz / Cevşen 20 Parça) */}
+              {/* Task Groups (Hatim / Cevşen) */}
               {selectedGroup.tasks && selectedGroup.tasks.length > 0 ? (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
-                      Cüz / Parça Dağılımı ({selectedGroup.tasks.length} Parça)
-                    </h4>
-                    <span className="text-[11px] text-emerald-700 font-medium">
-                      Kendi cüzünüzü alın veya @kullanıcı_adı ile kardeşinize atayın
-                    </span>
-                  </div>
+                taskViewMode === 'ring' ? (
+                  /* IDEA 1: Dairesel Halka Meclisi Component */
+                  <CircularJuzRing
+                    group={selectedGroup}
+                    currentUser={currentUser}
+                    onAssignTask={handleAssignTask}
+                    onCompleteTask={handleCompleteTask}
+                    onUncompleteTask={handleUncompleteTask}
+                    onOpenJuzInQuranReader={onOpenJuzInQuranReader}
+                    onOpenCelebrationModal={() => setCelebrationGroup(selectedGroup)}
+                  />
+                ) : (
+                  /* Classic Grid List View */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
+                        Cüz / Parça Dağılımı ({selectedGroup.tasks.length} Parça)
+                      </h4>
+                      <span className="text-[11px] text-emerald-700 font-medium">
+                        Kendi cüzünüzü alın veya @kullanıcı_adı ile kardeşinize atayın
+                      </span>
+                    </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                    {selectedGroup.tasks.map((task) => {
-                      const isCompleted = task.status === 'completed';
-                      const isAssigned = task.status === 'assigned';
-                      const isMyTask = isTaskOwnedByCurrentUser(task);
-                      const isAssigningThis = assigningTaskIndex === task.taskIndex;
-                      const isHatimGroup = selectedGroup.type === 'hatim';
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {selectedGroup.tasks.map((task) => {
+                        const isCompleted = task.status === 'completed';
+                        const isAssigned = task.status === 'assigned';
+                        const isMyTask = isTaskOwnedByCurrentUser(task);
+                        const isAssigningThis = assigningTaskIndex === task.taskIndex;
+                        const isHatimGroup = selectedGroup.type === 'hatim';
 
-                      return (
-                        <div
-                          key={task.id}
-                          className={`p-3 rounded-xl border text-xs flex flex-col justify-between transition-all ${
-                            isCompleted
-                              ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
-                              : isAssigned
-                              ? 'bg-amber-50/60 border-amber-200 text-slate-800'
-                              : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between font-bold">
-                              <span className="text-slate-900">{task.title}</span>
-                              {isCompleted ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                              ) : isAssigned ? (
-                                <Clock className="w-4 h-4 text-amber-600" />
-                              ) : (
-                                <span className="text-[10px] text-emerald-600 font-semibold">Boş</span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-slate-500 mt-1 truncate font-mono">
-                              {isAssigned || isCompleted ? (
-                                <span className="font-semibold text-emerald-800">
-                                  {task.assignedToUsername ? formatUserHandle(task.assignedToUsername) : '@kardes'}
-                                </span>
-                              ) : (
-                                'Alınabilir'
-                              )}
-                            </p>
-
-                            {/* Direct "Cüzü Oku" Quick Button for Hatim groups */}
-                            {isHatimGroup && onOpenJuzInQuranReader && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onOpenJuzInQuranReader(task.taskIndex);
-                                }}
-                                className="mt-2 w-full py-1.5 px-2 rounded-lg bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
-                                title={`${task.taskIndex}. Cüzü Kur'an-ı Kerim Okuyucuda Aç`}
-                              >
-                                <BookOpen className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform" />
-                                <span>{task.taskIndex}. Cüzü Oku (Arapça)</span>
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="mt-3 pt-2 border-t border-slate-100">
-                            {isCompleted ? (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Okundu
-                                </span>
-                                {isMyTask && (
-                                  <button
-                                    onClick={() => handleUncompleteTask(selectedGroup.id, task.taskIndex)}
-                                    className="text-[10px] text-slate-500 hover:text-red-600 hover:underline transition-colors px-1 font-medium"
-                                    title="Tamamlanma işaretini geri al"
-                                  >
-                                    Geri Al
-                                  </button>
+                        return (
+                          <div
+                            key={task.id}
+                            className={`p-3 rounded-2xl border text-xs flex flex-col justify-between transition-all ${
+                              isCompleted
+                                ? 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
+                                : isAssigned
+                                ? 'bg-amber-50/60 border-amber-200 text-slate-800'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 shadow-2xs'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between font-bold">
+                                <span className="text-slate-900">{task.title}</span>
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                ) : isAssigned ? (
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                ) : (
+                                  <span className="text-[10px] text-emerald-600 font-semibold">Boş</span>
                                 )}
                               </div>
-                            ) : isAssigned ? (
-                              isMyTask ? (
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleCompleteTask(selectedGroup.id, task.taskIndex)}
-                                    className="w-full py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-[11px] transition-all shadow-2xs flex items-center justify-center gap-1"
-                                    title={`${task.title} tilavetini tamamlandı olarak işaretle`}
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>Tamamla ✓</span>
-                                  </button>
+                              <p className="text-[11px] text-slate-500 mt-1 truncate font-mono">
+                                {isAssigned || isCompleted ? (
+                                  <span className="font-semibold text-emerald-800">
+                                    {task.assignedToUsername ? formatUserHandle(task.assignedToUsername) : '@kardes'}
+                                  </span>
+                                ) : (
+                                  'Alınabilir'
+                                )}
+                              </p>
+
+                              {/* Direct "Cüzü Oku" Quick Button for Hatim groups */}
+                              {isHatimGroup && onOpenJuzInQuranReader && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenJuzInQuranReader(task.taskIndex);
+                                  }}
+                                  className="mt-2 w-full py-1.5 px-2 rounded-xl bg-emerald-100/80 hover:bg-emerald-200 text-emerald-900 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
+                                  title={`${task.taskIndex}. Cüzü Kur'an-ı Kerim Okuyucuda Aç`}
+                                >
+                                  <BookOpen className="w-3.5 h-3.5 text-emerald-700 group-hover:scale-110 transition-transform" />
+                                  <span>{task.taskIndex}. Cüzü Oku (Arapça)</span>
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="mt-3 pt-2 border-t border-slate-100">
+                              {isCompleted ? (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Okundu
+                                  </span>
+                                  {isMyTask && (
+                                    <button
+                                      onClick={() => handleUncompleteTask(selectedGroup.id, task.taskIndex)}
+                                      className="text-[10px] text-slate-500 hover:text-red-600 hover:underline transition-colors px-1 font-medium"
+                                      title="Tamamlanma işaretini geri al"
+                                    >
+                                      Geri Al
+                                    </button>
+                                  )}
+                                </div>
+                              ) : isAssigned ? (
+                                isMyTask ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => handleCompleteTask(selectedGroup.id, task.taskIndex)}
+                                      className="w-full py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-[11px] transition-all shadow-2xs flex items-center justify-center gap-1"
+                                      title={`${task.title} tilavetini tamamlandı olarak işaretle`}
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      <span>Tamamla ✓</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between py-1">
+                                    <span className="text-[11px] text-amber-700 font-medium flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" /> Okunuyor...
+                                    </span>
+                                  </div>
+                                )
+                              ) : isAssigningThis ? (
+                                /* Specific @Handle input form */
+                                <div className="space-y-1.5 animate-in fade-in duration-100">
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      placeholder="örn: @ahmet_kardes"
+                                      value={assigneeHandleInput}
+                                      onChange={(e) => setAssigneeHandleInput(e.target.value)}
+                                      className="w-full pl-6 pr-2 py-1 text-[11px] rounded-lg border border-emerald-300 font-mono bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                                      autoFocus
+                                    />
+                                    <AtSign className="w-3 h-3 text-emerald-600 absolute left-1.5 top-2" />
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => handleAssignTask(selectedGroup.id, task.taskIndex, assigneeHandleInput)}
+                                      disabled={!assigneeHandleInput.trim()}
+                                      className="flex-1 py-1 rounded-md bg-emerald-600 text-white font-bold text-[10px] disabled:opacity-50"
+                                    >
+                                      Ata
+                                    </button>
+                                    <button
+                                      onClick={() => setAssigningTaskIndex(null)}
+                                      className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-[10px]"
+                                    >
+                                      İptal
+                                    </button>
+                                  </div>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-between py-1">
-                                  <span className="text-[11px] text-amber-700 font-medium flex items-center gap-1">
-                                    <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" /> Okunuyor...
-                                  </span>
-                                </div>
-                              )
-                            ) : isAssigningThis ? (
-                              /* Specific @Handle input form */
-                              <div className="space-y-1.5 animate-in fade-in duration-100">
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    placeholder="örn: @ahmet_kardes"
-                                    value={assigneeHandleInput}
-                                    onChange={(e) => setAssigneeHandleInput(e.target.value)}
-                                    className="w-full pl-6 pr-2 py-1 text-[11px] rounded-lg border border-emerald-300 font-mono bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
-                                    autoFocus
-                                  />
-                                  <AtSign className="w-3 h-3 text-emerald-600 absolute left-1.5 top-2" />
-                                </div>
-                                <div className="flex gap-1">
+                                <div className="flex items-center gap-1.5">
                                   <button
-                                    onClick={() => handleAssignTask(selectedGroup.id, task.taskIndex, assigneeHandleInput)}
-                                    disabled={!assigneeHandleInput.trim()}
-                                    className="flex-1 py-1 rounded-md bg-emerald-600 text-white font-bold text-[10px] disabled:opacity-50"
+                                    onClick={() => handleAssignTask(selectedGroup.id, task.taskIndex)}
+                                    className="flex-1 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-[11px] transition-colors flex items-center justify-center gap-1"
                                   >
-                                    Ata
+                                    Cüzü Al
                                   </button>
                                   <button
-                                    onClick={() => setAssigningTaskIndex(null)}
-                                    className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 font-medium text-[10px]"
+                                    onClick={() => {
+                                      setAssigningTaskIndex(task.taskIndex);
+                                      setAssigneeHandleInput('');
+                                    }}
+                                    className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium"
+                                    title="@Kullanıcıya Ata"
                                   >
-                                    İptal
+                                    <AtSign className="w-3.5 h-3.5 text-emerald-700" />
                                   </button>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleAssignTask(selectedGroup.id, task.taskIndex)}
-                                  className="flex-1 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold text-[11px] transition-colors flex items-center justify-center gap-1"
-                                >
-                                  Cüzü Al
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setAssigningTaskIndex(task.taskIndex);
-                                    setAssigneeHandleInput('');
-                                  }}
-                                  className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-medium"
-                                  title="@Kullanıcıya Ata"
-                                >
-                                  <AtSign className="w-3.5 h-3.5 text-emerald-700" />
-                                </button>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )
               ) : (
                 /* Numbered Assignment Types (Tefriciye, 1000 İhlas) */
                 <div className="space-y-4">
                   {/* Add Commitment Form */}
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                     <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700">
                       Bu Halkaya Okuma Taahhüdü Ekle
                     </h4>
@@ -750,51 +838,51 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Adet</label>
                         <input
                           type="number"
-                          min="1"
-                          max="4444"
+                          min={1}
                           value={commitCount}
                           onChange={(e) => setCommitCount(Number(e.target.value))}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1">@Kullanıcı Adı (İsteğe Bağlı)</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="Boş bırakılırsa sizin adınıza"
-                            value={commitMemberHandle}
-                            onChange={(e) => setCommitMemberHandle(e.target.value)}
-                            className="w-full pl-6 pr-2 py-2 rounded-xl border border-slate-300 bg-white font-mono text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                          <AtSign className="w-3 h-3 text-slate-400 absolute left-2 top-3" />
-                        </div>
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          onClick={() => handleAddCommitment(selectedGroup.id)}
-                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs"
-                        >
-                          Taahhüdü Kaydet
-                        </button>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                          Kimin Adına? (İsteğe bağlı @kullanıcı_adı)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Boş bırakırsanız sizin adınıza kaydedilir"
+                          value={commitMemberHandle}
+                          onChange={(e) => setCommitMemberHandle(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono text-slate-900 bg-white"
+                        />
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleAddCommitment(selectedGroup.id)}
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                    >
+                      Taahhüdü Kaydet
+                    </button>
                   </div>
 
-                  {/* List of commitments */}
+                  {/* Commitments List */}
                   <div className="space-y-2">
                     <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500">
-                      Katılımcı Okuma Kayıtları
+                      Katılımcı Taahhütleri ({selectedGroup.numberedAssignments?.length || 0})
                     </h4>
                     {selectedGroup.numberedAssignments?.map((assign) => {
-                      const isMine = assign.userId === (currentUser?.id || 'current-user');
+                      const isMine =
+                        assign.userId === currentUser?.id ||
+                        assign.userId === 'current-user' ||
+                        (currentUser?.username && assign.userUsername === `@${currentUser.username}`);
+
                       return (
                         <div
                           key={assign.id}
-                          className="p-3 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 text-xs"
+                          className="p-3 rounded-2xl bg-white border border-slate-200 text-xs flex items-center justify-between"
                         >
                           <div>
-                            <span className="font-mono font-bold text-emerald-900">
+                            <span className="font-bold font-mono text-emerald-800">
                               {assign.userUsername ? formatUserHandle(assign.userUsername) : '@kardes'}
                             </span>
                             <span className="text-slate-500 ml-2">
@@ -808,7 +896,7 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                                 <button
                                   key={inc}
                                   onClick={() => handleUpdateCommitment(selectedGroup.id, assign.id, inc)}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px]"
+                                  className="px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-[11px]"
                                 >
                                   +{inc}
                                 </button>
@@ -828,8 +916,35 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                 </div>
               )}
             </div>
+
+            {/* Modal Bottom Bar */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => setCelebrationGroup(selectedGroup)}
+                className="text-xs text-amber-700 hover:text-amber-800 font-bold flex items-center gap-1.5"
+              >
+                <Award className="w-4 h-4 text-amber-600" />
+                <span>Hatm-i Şerif Duası & Beratını Görüntüle</span>
+              </button>
+
+              <button
+                onClick={() => setSelectedGroup(null)}
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold"
+              >
+                Kapat
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Hatim Celebration & Certificate Modal (Fikir 4) */}
+      {celebrationGroup && (
+        <HatimCelebrationModal
+          group={celebrationGroup}
+          currentUser={currentUser}
+          onClose={() => setCelebrationGroup(null)}
+        />
       )}
 
       {/* Create New Group Modal */}

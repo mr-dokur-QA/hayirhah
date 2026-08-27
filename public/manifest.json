@@ -1,0 +1,25 @@
+{
+  "name": "Hayırhah - İbadet ve Dua Kardeşliği",
+  "short_name": "Hayırhah",
+  "description": "İbadet takibi, namaz vakitleri, hatim ve dua kardeşliği grupları, Kur'an-ı Kerim ve kıble pusulası",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#064E3B",
+  "theme_color": "#064E3B",
+  "categories": ["lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -15,6 +15,8 @@ import { User, DailyPrayerTracking } from './types';
 import { ApiService } from './services/api';
 import { getPrayerTimesForLocation } from './services/prayerTimeService';
 import { detectUserLocation } from './services/locationService';
+import { NativeMobile } from './services/nativeMobile';
+import { HapticFeedback } from './services/haptics';
 import { Clock, CheckSquare, Users, BookOpen, Compass, Sparkles, Quote, Flame, Bell, X, CheckCircle, MapPin, Navigation, Loader2 } from 'lucide-react';
 
 interface ActivePrayerAlert {
@@ -101,7 +103,7 @@ export function App() {
     return false;
   });
 
-  // Synchronize document.documentElement class & localStorage on night mode change
+  // Synchronize document.documentElement class, localStorage, & Native Mobile Status Bar on night mode change
   useEffect(() => {
     try {
       localStorage.setItem('hayirhah_night_mode', JSON.stringify(isNightMode));
@@ -113,7 +115,13 @@ export function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    NativeMobile.syncStatusBar(isNightMode);
   }, [isNightMode]);
+
+  // Initialize Native Mobile features (Splash screen, Notification permissions, Status Bar)
+  useEffect(() => {
+    NativeMobile.init(isNightMode);
+  }, []);
 
   // In-app prayer notification banner state
   const [activeAlert, setActiveAlert] = useState<ActivePrayerAlert | null>(null);
@@ -614,20 +622,23 @@ export function App() {
         )}
       </main>
 
-      {/* Bottom Mobile Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-lg transition-colors">
-        <div className="grid grid-cols-6 h-16">
+      {/* Bottom Mobile Tab Bar (iOS / Android Native Safe-Area Compliant) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shadow-lg transition-colors pb-safe">
+        <div className="grid grid-cols-6 h-16 items-center">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center justify-center transition-colors ${
+                onClick={() => {
+                  HapticFeedback.light();
+                  setActiveTab(item.id);
+                }}
+                className={`flex flex-col items-center justify-center h-full transition-colors active:scale-95 ${
                   isActive ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
-                <div className={`p-1 rounded-lg ${isActive ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' : ''}`}>
+                <div className={`p-1 rounded-lg transition-transform ${isActive ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 scale-105' : ''}`}>
                   {item.icon}
                 </div>
                 <span className="text-[9px] tracking-tight mt-0.5 truncate max-w-[48px]">

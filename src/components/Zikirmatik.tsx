@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, RotateCcw, Volume2, VolumeX, Flame, Award, CheckCircle2 } from 'lucide-react';
 import { POPULAR_DHIKRS } from '../data/islamicData';
 import { DhikrItem } from '../types';
+import { HapticFeedback } from '../services/haptics';
 import confetti from 'canvas-confetti';
 
 export const Zikirmatik: React.FC = () => {
@@ -34,6 +35,7 @@ export const Zikirmatik: React.FC = () => {
 
     if (target > 0 && nextCount >= target) {
       // Reached target!
+      HapticFeedback.heavy();
       setCount(0);
       setTotalLaps((l) => l + 1);
       confetti({
@@ -42,6 +44,7 @@ export const Zikirmatik: React.FC = () => {
         origin: { y: 0.7 },
       });
     } else {
+      HapticFeedback.light();
       setCount(nextCount);
     }
   };

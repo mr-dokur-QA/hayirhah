@@ -88,6 +88,48 @@ export interface NumberedAssignment {
   assignedAt: string;
 }
 
+export interface PrayerRequestResponse {
+  id: string;
+  userId: string;
+  userUsername: string;
+  type: 'amin' | 'fatiha' | 'ihlas' | 'salavat' | 'shafi' | 'message';
+  count: number;
+  message?: string;
+  createdAt: string;
+}
+
+export interface PrayerRequest {
+  id: string;
+  groupId?: string; // If associated with a specific group
+  authorId: string;
+  authorUsername: string;
+  category: 'shifa' | 'hacet' | 'exam_work' | 'vefat' | 'shukur' | 'general';
+  title: string;
+  intention: string;
+  targetDhikrType?: string; // e.g. "Fâtiha", "Âyetel Kürsi", "Salavât", "Yâ Şâfî", "İhlâs"
+  targetCount?: number;
+  currentCount: number;
+  aminCount: number;
+  responses: PrayerRequestResponse[];
+  createdAt: string;
+  isCompleted?: boolean;
+}
+
+export interface HatimCertificate {
+  id: string;
+  groupId: string;
+  groupTitle: string;
+  groupType: GroupType;
+  completedAt: string;
+  totalTarget: number;
+  participants: {
+    username: string;
+    completedCount: number;
+    tasksTitle?: string[];
+  }[];
+  customIntention?: string;
+}
+
 export interface Group {
   id: string;
   title: string;
@@ -105,6 +147,7 @@ export interface Group {
   membersCount: number;
   tasks?: GroupTask[];
   numberedAssignments?: NumberedAssignment[];
+  prayerRequests?: PrayerRequest[];
 }
 
 export interface QuranSurah {

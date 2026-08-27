@@ -219,7 +219,7 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
+            <div key={i} className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
           ))
         ) : (
           data?.items.map((item) => {
@@ -229,26 +229,26 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
                 key={item.id}
                 className={`relative rounded-xl p-4 transition-all duration-200 flex flex-col justify-between border ${
                   isNext
-                    ? 'bg-gradient-to-b from-emerald-50 to-teal-50/70 border-emerald-400 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
+                    ? 'bg-gradient-to-b from-emerald-50 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/30 border-emerald-400 dark:border-emerald-600 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
                     : item.isPassed
-                    ? 'bg-slate-50/80 border-slate-200/80 text-slate-500'
-                    : 'bg-white border-slate-200/80 text-slate-800 shadow-xs hover:border-emerald-200'
+                    ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-xs hover:border-emerald-200 dark:hover:border-emerald-800'
                 }`}
               >
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                  <span className="p-1.5 rounded-lg bg-white shadow-2xs border border-slate-100">
+                  <span className="p-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-2xs border border-slate-100 dark:border-slate-700">
                     {getPrayerIcon(item.id)}
                   </span>
                   <button
                     onClick={() => toggleNotif(item)}
-                    className="text-slate-400 hover:text-emerald-600 p-1"
+                    className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 transition-colors"
                     title="Bildirim Ayarı"
                   >
                     {notifs[item.name] !== false ? (
-                      <Bell className="w-3.5 h-3.5 text-emerald-600" />
+                      <Bell className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <BellOff className="w-3.5 h-3.5 text-slate-300" />
+                      <BellOff className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
                     )}
                   </button>
                 </div>
@@ -256,12 +256,12 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
                 {/* Body */}
                 <div className="mt-3">
                   <div className="flex items-baseline justify-between">
-                    <span className={`text-xs font-semibold uppercase tracking-wider ${isNext ? 'text-emerald-800 font-bold' : 'text-slate-600'}`}>
+                    <span className={`text-xs font-semibold uppercase tracking-wider ${isNext ? 'text-emerald-800 dark:text-emerald-300 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
                       {item.turkishName}
                     </span>
-                    <span className="text-xs text-slate-400 font-arabic">{item.arabicName}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-arabic">{item.arabicName}</span>
                   </div>
-                  <div className={`text-xl font-extrabold tracking-tight mt-0.5 ${isNext ? 'text-emerald-950 font-black' : 'text-slate-800'}`}>
+                  <div className={`text-xl font-extrabold tracking-tight mt-0.5 ${isNext ? 'text-emerald-950 dark:text-emerald-100 font-black' : 'text-slate-800 dark:text-slate-100'}`}>
                     {item.time}
                   </div>
                 </div>

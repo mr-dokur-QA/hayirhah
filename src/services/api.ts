@@ -8,7 +8,80 @@ const STORAGE_KEYS = {
   TOKEN: 'hayirhah_jwt_token',
   SELECTED_CITY: 'hayirhah_selected_city',
   DHIKRS: 'hayirhah_dhikrs_v1',
+  PRAYER_REQUESTS: 'hayirhah_prayer_requests_v1',
 };
+
+const SAMPLE_PRAYER_REQUESTS: import('../types').PrayerRequest[] = [
+  {
+    id: 'pr-1',
+    authorId: 'user-2',
+    authorUsername: '@mehmet_salih',
+    category: 'shifa',
+    title: 'Şifa Bekleyen Annemiz İçin Dua',
+    intention: 'Yoğun bakımda tedavi gören kıymetli annemizin tez zamanda hayırlı ve kâmil bir şifaya kavuşması niyetiyle kardeşlerimizden Fatiha ve Yâ Şâfî zikri istirham ediyoruz.',
+    targetDhikrType: 'Fâtiha',
+    targetCount: 100,
+    currentCount: 68,
+    aminCount: 34,
+    responses: [
+      { id: 'r-1', userId: 'user-6', userUsername: '@zeynep_h', type: 'fatiha', count: 10, message: 'Rabbim Şâfî ismiyle acil ve hayırlı şifalar ihsan eylesin.', createdAt: new Date(Date.now() - 3600000).toISOString() },
+      { id: 'r-2', userId: 'user-3', userUsername: '@omer_faruk', type: 'fatiha', count: 15, message: 'Dualarımızdasınız kardeşim, Mevlam tez vakitte ayağa kaldırsın.', createdAt: new Date(Date.now() - 7200000).toISOString() },
+      { id: 'r-3', userId: 'current-user', userUsername: '@siz', type: 'amin', count: 1, createdAt: new Date(Date.now() - 1800000).toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+  },
+  {
+    id: 'pr-2',
+    authorId: 'user-6',
+    authorUsername: '@zeynep_h',
+    category: 'exam_work',
+    title: 'Üniversite ve Hafızlık Sınavı Kolaylığı',
+    intention: 'Bu hafta sonu hafızlık tespit ve üniversite sınavına girecek genç kardeşlerimizin zihin açıklığı ve kalplerinin teskini için 1.000 İhlas ve Âyetel Kürsi niyet ettik.',
+    targetDhikrType: 'İhlâs-ı Şerif',
+    targetCount: 1000,
+    currentCount: 450,
+    aminCount: 52,
+    responses: [
+      { id: 'r-4', userId: 'user-2', userUsername: '@mehmet_salih', type: 'ihlas', count: 100, message: 'Rabbim ilim yolunda muvaffakiyetler nasip etsin.', createdAt: new Date(Date.now() - 5000000).toISOString() },
+      { id: 'r-5', userId: 'user-4', userUsername: '@mustafa_can', type: 'ihlas', count: 150, createdAt: new Date(Date.now() - 10000000).toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+  },
+  {
+    id: 'pr-3',
+    authorId: 'user-4',
+    authorUsername: '@mustafa_can',
+    category: 'vefat',
+    title: 'Vefat Eden Dedemizin Ruhuna Fâtiha',
+    intention: 'Ebediyete irtihal eden merhum dedemizin kabrinin nur, mekânının cennet olması niyetiyle ruhuna hediye edilmek üzere Fâtihalarınızı bekliyoruz.',
+    targetDhikrType: 'Fâtiha',
+    targetCount: 70,
+    currentCount: 70,
+    aminCount: 41,
+    isCompleted: true,
+    responses: [
+      { id: 'r-6', userId: 'user-6', userUsername: '@zeynep_h', type: 'fatiha', count: 20, message: 'Mekânı cennet, makamı âlî olsun inşallah.', createdAt: new Date(Date.now() - 20000000).toISOString() },
+      { id: 'r-7', userId: 'user-2', userUsername: '@mehmet_salih', type: 'fatiha', count: 30, createdAt: new Date(Date.now() - 25000000).toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 259200000).toISOString(),
+  },
+  {
+    id: 'pr-4',
+    authorId: 'user-3',
+    authorUsername: '@omer_faruk',
+    category: 'hacet',
+    title: 'Hayırlı Evlilik & Yuva Niyeti',
+    intention: 'Hayırlı ve takvalı bir yuva kurma niyetinde olan kardeşimiz için gönül huzuru ve hayırlı kapıların açılması duası.',
+    targetDhikrType: 'Salavât-ı Şerife',
+    targetCount: 500,
+    currentCount: 220,
+    aminCount: 29,
+    responses: [
+      { id: 'r-8', userId: 'user-5', userUsername: '@ali_riza', type: 'salavat', count: 100, message: 'Rabbim iki cihan saadeti nasip eylesin.', createdAt: new Date(Date.now() - 4000000).toISOString() },
+    ],
+    createdAt: new Date(Date.now() - 100000000).toISOString(),
+  }
+];
 
 export function formatUserHandle(input: string): string {
   if (!input) return '@kardes';
@@ -456,5 +529,122 @@ export const ApiService = {
       console.warn('Get notification history failed', e);
     }
     return { logs: [], registeredDevicesCount: 0 };
+  },
+
+  // Prayer Requests (Kardeşlik Dua Talepleri)
+  getPrayerRequests(groupId?: string): import('../types').PrayerRequest[] {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PRAYER_REQUESTS);
+      if (stored) {
+        const parsed: import('../types').PrayerRequest[] = JSON.parse(stored);
+        if (groupId) {
+          return parsed.filter((p) => p.groupId === groupId || !p.groupId);
+        }
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to parse prayer requests', e);
+    }
+    // Initialize with sample requests
+    this.savePrayerRequests(SAMPLE_PRAYER_REQUESTS);
+    if (groupId) {
+      return SAMPLE_PRAYER_REQUESTS.filter((p) => p.groupId === groupId || !p.groupId);
+    }
+    return SAMPLE_PRAYER_REQUESTS;
+  },
+
+  savePrayerRequests(requests: import('../types').PrayerRequest[]) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PRAYER_REQUESTS, JSON.stringify(requests));
+    } catch (e) {
+      console.warn('Failed to save prayer requests', e);
+    }
+  },
+
+  addPrayerRequest(req: {
+    groupId?: string;
+    category: import('../types').PrayerRequest['category'];
+    title: string;
+    intention: string;
+    targetDhikrType?: string;
+    targetCount?: number;
+  }): import('../types').PrayerRequest {
+    const requests = this.getPrayerRequests();
+    const currentUser = this.getCurrentUser();
+    const authorHandle = currentUser?.username ? formatUserHandle(currentUser.username) : '@siz';
+
+    const newRequest: import('../types').PrayerRequest = {
+      id: `pr-${Date.now()}`,
+      groupId: req.groupId,
+      authorId: currentUser?.id || 'current-user',
+      authorUsername: authorHandle,
+      category: req.category,
+      title: req.title,
+      intention: req.intention,
+      targetDhikrType: req.targetDhikrType || 'Fâtiha',
+      targetCount: req.targetCount || 100,
+      currentCount: 0,
+      aminCount: 1,
+      responses: [
+        {
+          id: `r-${Date.now()}`,
+          userId: currentUser?.id || 'current-user',
+          userUsername: authorHandle,
+          type: 'amin',
+          count: 1,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      isCompleted: false,
+    };
+
+    requests.unshift(newRequest);
+    this.savePrayerRequests(requests);
+    return newRequest;
+  },
+
+  respondToPrayerRequest(
+    requestId: string,
+    type: 'amin' | 'fatiha' | 'ihlas' | 'salavat' | 'shafi' | 'message',
+    count: number = 1,
+    message?: string
+  ): import('../types').PrayerRequest | null {
+    const requests = this.getPrayerRequests();
+    const req = requests.find((r) => r.id === requestId);
+    if (!req) return null;
+
+    const currentUser = this.getCurrentUser();
+    const userHandle = currentUser?.username ? formatUserHandle(currentUser.username) : '@siz';
+
+    if (type === 'amin') {
+      req.aminCount = (req.aminCount || 0) + 1;
+    } else if (type !== 'message') {
+      req.currentCount = (req.currentCount || 0) + count;
+      if (req.targetCount && req.currentCount >= req.targetCount) {
+        req.isCompleted = true;
+      }
+    }
+
+    if (!req.responses) req.responses = [];
+    req.responses.unshift({
+      id: `resp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      userId: currentUser?.id || 'current-user',
+      userUsername: userHandle,
+      type,
+      count,
+      message,
+      createdAt: new Date().toISOString(),
+    });
+
+    this.savePrayerRequests(requests);
+    return req;
+  },
+
+  deletePrayerRequest(requestId: string): boolean {
+    const requests = this.getPrayerRequests();
+    const filtered = requests.filter((r) => r.id !== requestId);
+    this.savePrayerRequests(filtered);
+    return true;
   }
 };
