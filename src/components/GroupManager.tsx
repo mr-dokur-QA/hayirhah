@@ -559,14 +559,6 @@ export const GroupManager: React.FC<GroupManagerProps> = ({ currentUser, onOpenJ
                 </div>
               </div>
 
-              {/* Privacy Notice Banner in Modal */}
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-emerald-200/80 text-[11px] text-slate-600">
-                <Shield className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>
-                  <strong>Gizlilik Koruması:</strong> E-postalar gizlidir. Yalnızca davet edilen kardeşlerin <strong>@kullanıcı_adları</strong> görünür.
-                </span>
-              </div>
-
               {/* Visual Progress Bar with milestones */}
               <div className="space-y-1.5">
                 <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden shadow-inner flex">

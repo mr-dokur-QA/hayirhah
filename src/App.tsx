@@ -10,10 +10,12 @@ import { Zikirmatik } from './components/Zikirmatik';
 import { CityPickerModal } from './components/CityPickerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthModal } from './components/AuthModal';
-import { TURKEY_CITIES, CityLocation, DAILY_HADITHS } from './data/islamicData';
+import { TURKEY_CITIES, WORLD_CITIES, CityLocation, DAILY_HADITHS } from './data/islamicData';
 import { User, DailyPrayerTracking } from './types';
 import { ApiService } from './services/api';
-import { Clock, CheckSquare, Users, BookOpen, Compass, Sparkles, Quote, Flame, Bell, X, CheckCircle } from 'lucide-react';
+import { getPrayerTimesForLocation } from './services/prayerTimeService';
+import { detectUserLocation } from './services/locationService';
+import { Clock, CheckSquare, Users, BookOpen, Compass, Sparkles, Quote, Flame, Bell, X, CheckCircle, MapPin, Navigation, Loader2 } from 'lucide-react';
 
 interface ActivePrayerAlert {
   id: string;
@@ -42,6 +44,46 @@ export function App() {
 
   const [user, setUser] = useState<User | null>(() => ApiService.getCurrentUser());
   const [dailyHadith, setDailyHadith] = useState(DAILY_HADITHS[0]);
+
+  // Auto-location detection states
+  const [isAutoDetectingLocation, setIsAutoDetectingLocation] = useState(false);
+  const [locationToast, setLocationToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  // Auto-detect user's real location (GPS/IP) on initial mount
+  useEffect(() => {
+    let isMounted = true;
+    const runAutoLocation = async () => {
+      const saved = localStorage.getItem('hayirhah_saved_city');
+      const hasAutoSynced = sessionStorage.getItem('hayirhah_session_auto_located');
+
+      // If user hasn't had auto-location in this session or no saved city
+      if (!hasAutoSynced || !saved) {
+        setIsAutoDetectingLocation(true);
+        try {
+          const res = await detectUserLocation();
+          if (isMounted && res.city) {
+            setCurrentCity(res.city);
+            sessionStorage.setItem('hayirhah_session_auto_located', 'true');
+            if (res.source === 'gps' || res.source === 'ip') {
+              setLocationToast({
+                message: `📍 Konumunuz güncellendi: ${res.city.name} (${res.city.country})`,
+                type: 'success',
+              });
+              setTimeout(() => {
+                if (isMounted) setLocationToast(null);
+              }, 6000);
+            }
+          }
+        } catch (e) {
+          console.warn('Auto location detection failed on mount', e);
+        } finally {
+          if (isMounted) setIsAutoDetectingLocation(false);
+        }
+      }
+    };
+
+    runAutoLocation();
+  }, []);
 
   // Night Mode state with localStorage persistence & system preference fallback
   const [isNightMode, setIsNightMode] = useState<boolean>(() => {
@@ -148,11 +190,14 @@ export function App() {
     let isMounted = true;
     const fetchTimings = async () => {
       try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const res = await fetch(`/api/prayer-times?lat=${currentCity.latitude}&lng=${currentCity.longitude}&date=${todayStr}`);
-        const json = await res.json();
-        if (json?.data?.timings && isMounted) {
-          setCachedTimings(json.data.timings);
+        const { timings } = await getPrayerTimesForLocation(
+          currentCity.latitude,
+          currentCity.longitude,
+          currentCity.name,
+          new Date()
+        );
+        if (timings && isMounted) {
+          setCachedTimings(timings as unknown as Record<string, string>);
         }
       } catch (e) {
         console.warn('Could not fetch prayer times for background monitor', e);
@@ -293,6 +338,28 @@ export function App() {
         isNightMode={isNightMode}
         onToggleNightMode={() => setIsNightMode((prev) => !prev)}
       />
+
+      {/* Real-time Prayer Time Notification Alert Banner */}
+      {locationToast && (
+        <div className="bg-emerald-800 text-white text-xs py-2 px-4 flex items-center justify-between gap-2 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-2 max-w-6xl mx-auto">
+            <MapPin className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+            <span className="font-semibold">{locationToast.message}</span>
+            <button
+              onClick={() => setIsCityPickerOpen(true)}
+              className="ml-2 text-[10px] uppercase font-bold underline text-emerald-200 hover:text-white"
+            >
+              Değiştir
+            </button>
+          </div>
+          <button
+            onClick={() => setLocationToast(null)}
+            className="text-emerald-200 hover:text-white text-xs font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Real-time Prayer Time Notification Alert Banner */}
       {activeAlert && (
@@ -585,6 +652,8 @@ export function App() {
         onClose={() => setIsSettingsOpen(false)}
         isNightMode={isNightMode}
         onToggleNightMode={() => setIsNightMode((prev) => !prev)}
+        currentCity={currentCity}
+        onSelectCity={handleCitySelect}
       />
 
       <AuthModal

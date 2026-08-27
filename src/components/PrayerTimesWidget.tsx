@@ -3,6 +3,7 @@ import { Clock, Volume2, VolumeX, Bell, BellOff, MapPin, Sparkles, Sunrise, Sun,
 import { CityLocation } from '../data/islamicData';
 import { PrayerTimeItem, PrayerTimesData } from '../types';
 import { ApiService } from '../services/api';
+import { getPrayerTimesForLocation } from '../services/prayerTimeService';
 
 interface PrayerTimesWidgetProps {
   currentCity: CityLocation;
@@ -33,12 +34,14 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
 
     async function loadTimes() {
       try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const res = await fetch(`/api/prayer-times?lat=${currentCity.latitude}&lng=${currentCity.longitude}&date=${todayStr}`);
-        const json = await res.json();
+        const { timings: t, hijriDate } = await getPrayerTimesForLocation(
+          currentCity.latitude,
+          currentCity.longitude,
+          currentCity.name,
+          new Date()
+        );
 
-        if (json?.data?.timings && isMounted) {
-          const t = json.data.timings;
+        if (t && isMounted) {
           const now = new Date();
           const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -56,7 +59,7 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
 
           const items: PrayerTimeItem[] = rawList.map((item) => {
             const [h, m] = item.time.split(':').map(Number);
-            const prayerMinutes = h * 60 + m;
+            const prayerMinutes = (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
             const isPassed = currentMinutes >= prayerMinutes;
             let diff = prayerMinutes - currentMinutes;
             if (diff < 0) diff += 24 * 60; // next day wrap
@@ -92,7 +95,7 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
             city: currentCity.name,
             country: currentCity.country,
             date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' }),
-            hijriDate: `${json.data?.date?.hijri?.day || '04'} ${json.data?.date?.hijri?.month?.en === 'Ramadan' ? 'Ramazan' : 'Şaban'} ${json.data?.date?.hijri?.year || '1447'}`,
+            hijriDate: hijriDate || '15 Şaban 1447',
             timings: t,
             items,
             nextPrayer: nextItem,

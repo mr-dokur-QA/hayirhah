@@ -245,22 +245,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, isOpen
               </div>
             </div>
 
-            {/* Privacy Shield Box: Email strictly hidden */}
+            {/* User Profile Card */}
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
-              <div className="flex items-center gap-2 text-slate-700 font-bold">
-                <Shield className="w-4 h-4 text-emerald-600" />
-                <span>Gizlilik & Güvenlik Güvencesi</span>
-              </div>
               <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-200 text-xs">
                 <div className="flex items-center gap-2 text-slate-600">
-                  <Lock className="w-3.5 h-3.5 text-amber-600" />
+                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="font-medium">Kayıtlı E-Posta:</span>
                 </div>
                 <span className="font-mono text-slate-700 font-semibold">{user.email}</span>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                🔒 E-posta adresiniz <strong>asla diğer kullanıcılarla paylaşılmaz</strong>. Yalnızca davetleştiğiniz veya dahil olduğunuz halkalarda <strong>{user.username}</strong> kullanıcı adınız görünür.
-              </p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-medium space-y-1">
@@ -356,19 +349,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, isOpen
               </button>
             </div>
 
-            {/* Privacy Note Banner */}
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
-              <Shield className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <span>
-                <strong>Gizlilik:</strong> E-posta adresiniz diğer üyelerle paylaşılmaz. Sadece belirlediğiniz <strong>@kullanici_adi</strong> görünür.
-              </span>
-            </div>
-
             {/* Gmail Direct Quick Connect Form */}
             {tab === 'gmail' && (
               <form onSubmit={handleDirectGmailSubmit} className="space-y-3 text-xs animate-in fade-in duration-150">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Gmail Adresiniz (Gizli Tutulur)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Gmail Adresiniz</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -441,13 +426,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ user, onUserChange, isOpen
                       <AtSign className="w-4 h-4 text-slate-400 absolute left-2.5 top-3" />
                     </div>
                     <span className="text-[10px] text-slate-500 mt-1 block">
-                      {username ? `Görünecek kimliğiniz: ${formatUserHandle(username)}` : 'Halkalarda ve cüz paylaşımında sadece bu @ad görünür.'}
+                      {username ? `Görünecek kimliğiniz: ${formatUserHandle(username)}` : 'Dua halkalarında ve cüz paylaşımında bu adınız kullanılır.'}
                     </span>
                   </div>
                 )}
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">E-Posta Adresi (Gizli Kalır)</label>
+                  <label className="block font-bold text-slate-700 mb-1">E-Posta Adresi</label>
                   <input
                     type="email"
                     required

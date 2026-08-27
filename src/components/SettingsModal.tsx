@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Bell, Volume2, Shield, Send, Check, Smartphone, Radio, History, Moon, Sun, Sparkles } from 'lucide-react';
+import { Settings, Bell, Volume2, Shield, Send, Check, Smartphone, Radio, History, Moon, Sun, Sparkles, MapPin, Navigation, Loader2 } from 'lucide-react';
 import { ApiService } from '../services/api';
+import { CityLocation } from '../data/islamicData';
+import { detectUserLocation } from '../services/locationService';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   isNightMode: boolean;
   onToggleNightMode: () => void;
+  currentCity?: CityLocation;
+  onSelectCity?: (city: CityLocation) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,6 +18,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   isNightMode,
   onToggleNightMode,
+  currentCity,
+  onSelectCity,
 }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'fcm' | 'history'>('general');
   const [method, setMethod] = useState('13'); // Diyanet
@@ -26,6 +32,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [testStatus, setTestStatus] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [notificationLogs, setNotificationLogs] = useState<any[]>([]);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locatingMsg, setLocatingMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && activeTab === 'history') {
@@ -181,6 +189,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 >
                   <div className="bg-white w-4.5 h-4.5 rounded-full shadow-md transform transition-transform" />
                 </button>
+              </div>
+
+              {/* Konum ve Otomatik GPS Kartı */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-xs text-emerald-950 dark:text-emerald-200 block">
+                        Kayıtlı Konum & Şehir
+                      </span>
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                        {currentCity ? `${currentCity.name}, ${currentCity.country}` : 'Otomatik'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsLocating(true);
+                      setLocatingMsg('Konum alınıyor...');
+                      try {
+                        const res = await detectUserLocation();
+                        setLocatingMsg(res.message);
+                        if (onSelectCity) onSelectCity(res.city);
+                      } catch (e) {
+                        setLocatingMsg('Konum algılanamadı');
+                      } finally {
+                        setTimeout(() => {
+                          setIsLocating(false);
+                          setLocatingMsg(null);
+                        }, 2500);
+                      }
+                    }}
+                    disabled={isLocating}
+                    className="py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-2xs transition-all disabled:opacity-60"
+                  >
+                    {isLocating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Navigation className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isLocating ? 'Algılanıyor...' : 'GPS İle Yenile'}</span>
+                  </button>
+                </div>
+                {locatingMsg && (
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold bg-emerald-100/60 dark:bg-emerald-900/60 px-2.5 py-1 rounded-lg">
+                    {locatingMsg}
+                  </p>
+                )}
               </div>
 
               {/* Calculation Method */}

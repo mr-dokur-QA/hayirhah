@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Compass, Settings, User as UserIcon, Moon, Sun } from 'lucide-react';
 import { CityLocation } from '../data/islamicData';
 import { User } from '../types';
+import { CrescentStarLogo } from './CrescentStarLogo';
 
 interface HeaderProps {
   currentCity: CityLocation;
@@ -31,9 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
         {/* Brand / Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-700 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-700/20 font-arabic text-xl font-bold">
-            ح
-          </div>
+          <CrescentStarLogo className="w-10 h-10" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-bold text-lg sm:text-xl text-emerald-950 dark:text-emerald-300 tracking-tight flex items-center gap-1.5">

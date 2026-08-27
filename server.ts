@@ -695,8 +695,145 @@ Rabbim! Seni zikretmek, Sana şükretmek ve Sana en güzel şekilde kulluk etmek
     }
   });
 
+  // Reverse geocoding proxy
+  app.get('/api/reverse-geocode', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const lat = req.query.lat as string;
+      const lng = req.query.lng as string;
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Latitude and Longitude required' });
+      }
+
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=14&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'HayirhahApp/1.0 (Islamic Worship App)',
+          'Accept-Language': 'tr,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const address = data.address || {};
+        const rawCity = address.city || address.town || address.village || address.suburb || address.municipality || address.county || data.name || 'Bilinmeyen Konum';
+        const rawState = address.state || address.province || address.region || '';
+        let rawCountry = address.country || '';
+
+        // Translate common country names to Turkish
+        if (rawCountry === 'United States' || rawCountry === 'United States of America' || rawCountry === 'USA') {
+          rawCountry = rawState ? `ABD (${rawState})` : 'ABD';
+        } else if (rawCountry === 'United Kingdom' || rawCountry === 'UK') {
+          rawCountry = 'İngiltere';
+        } else if (rawCountry === 'Germany') {
+          rawCountry = 'Almanya';
+        } else if (rawCountry === 'Saudi Arabia') {
+          rawCountry = 'Suudi Arabistan';
+        }
+
+        return res.json({
+          name: rawCity,
+          state: rawState,
+          country: rawCountry || 'Dünya',
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+          displayName: data.display_name,
+        });
+      }
+      throw new Error('Reverse geocode failed');
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Reverse geocoding error' });
+    }
+  });
+
+  // Geocoding search proxy (Search any city worldwide by name)
+  app.get('/api/geocode', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const q = req.query.q as string;
+      if (!q || q.trim().length < 2) {
+        return res.json({ results: [] });
+      }
+
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=10&addressdetails=1`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'HayirhahApp/1.0 (Islamic Worship App)',
+          'Accept-Language': 'tr,en;q=0.9',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const results = (data || []).map((item: any) => {
+          const address = item.address || {};
+          const rawCity = address.city || address.town || address.village || address.suburb || address.county || item.name;
+          const rawState = address.state || address.province || '';
+          let rawCountry = address.country || '';
+
+          if (rawCountry === 'United States' || rawCountry === 'USA') {
+            rawCountry = rawState ? `ABD (${rawState})` : 'ABD';
+          } else if (rawCountry === 'United Kingdom' || rawCountry === 'UK') {
+            rawCountry = 'İngiltere';
+          } else if (rawCountry === 'Germany') {
+            rawCountry = 'Almanya';
+          }
+
+          return {
+            name: rawCity,
+            state: rawState,
+            country: rawCountry,
+            latitude: parseFloat(item.lat),
+            longitude: parseFloat(item.lon),
+            displayName: item.display_name,
+          };
+        });
+        return res.json({ results });
+      }
+      res.json({ results: [] });
+    } catch (err: any) {
+      res.json({ results: [] });
+    }
+  });
+
+  // IP based location fallback proxy
+  app.get('/api/ip-location', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      // Forward client IP if behind proxy
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress;
+      const ipParam = clientIp && !clientIp.includes('127.0.0.1') && !clientIp.includes('::1') ? clientIp : '';
+      
+      const url = ipParam ? `https://ipwho.is/${ipParam}` : 'https://ipwho.is/';
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success !== false && data.latitude && data.longitude) {
+          let countryName = data.country || 'Dünya';
+          if (countryName === 'United States' || data.country_code === 'US') {
+            countryName = data.region ? `ABD (${data.region})` : 'ABD';
+          }
+          return res.json({
+            name: data.city || data.region || 'Otomatik Konum',
+            state: data.region || '',
+            country: countryName,
+            latitude: data.latitude,
+            longitude: data.longitude,
+          });
+        }
+      }
+      throw new Error('IP location service unavailable');
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'IP location error' });
+    }
+  });
+
   // Prayer times proxy or local computation
   app.get('/api/prayer-times', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
     try {
       const lat = req.query.lat || '41.0082';
       const lng = req.query.lng || '28.9784';
@@ -729,8 +866,8 @@ Rabbim! Seni zikretmek, Sana şükretmek ve Sana en güzel şekilde kulluk etmek
           date: {
             readable: new Date().toLocaleDateString('tr-TR'),
             hijri: {
-              date: '04-09-1447',
-              month: { en: 'Ramadan', ar: 'رَمَضان' },
+              date: '15-08-1447',
+              month: { en: 'Shaban', ar: 'شَعْبان' },
               year: '1447',
             },
           },
