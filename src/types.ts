@@ -62,7 +62,7 @@ export interface DailyPrayerTracking {
   notes?: string;
 }
 
-export type GroupType = 'hatim' | 'yasin' | 'fetih' | 'tefriciye' | 'cevsen' | '1000_ihlas' | 'custom_parca' | 'custom_sayi';
+export type GroupType = 'hatim' | 'tefriciye' | 'cevsen' | '1000_ihlas';
 
 export interface GroupTask {
   id: string;

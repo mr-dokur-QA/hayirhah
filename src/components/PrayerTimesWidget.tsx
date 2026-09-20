@@ -1,31 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Volume2, VolumeX, Bell, BellOff, MapPin, Sparkles, Sunrise, Sun, Sunset, Moon, Send } from 'lucide-react';
+import {
+  Clock,
+  Bell,
+  BellOff,
+  MapPin,
+  Sparkles,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+} from 'lucide-react';
 import { CityLocation } from '../data/islamicData';
 import { PrayerTimeItem, PrayerTimesData } from '../types';
 import { ApiService } from '../services/api';
 import { getPrayerTimesForLocation } from '../services/prayerTimeService';
+import { NotificationSettingsService } from '../services/notificationSettings';
+import { HapticFeedback } from '../services/haptics';
 
 interface PrayerTimesWidgetProps {
   currentCity: CityLocation;
   onOpenCityPicker: () => void;
   onOpenQibla: () => void;
+  onOpenIbadet?: () => void;
 }
 
 export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
   currentCity,
   onOpenCityPicker,
   onOpenQibla,
+  onOpenIbadet,
 }) => {
   const [data, setData] = useState<PrayerTimesData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPlayingAzan, setIsPlayingAzan] = useState(false);
-  const [notifs, setNotifs] = useState<Record<string, boolean>>({
-    Fajr: true,
-    Dhuhr: true,
-    Asr: true,
-    Maghrib: true,
-    Isha: true,
-  });
+  const [showAllTimes, setShowAllTimes] = useState(false);
+  const [notifs, setNotifs] = useState<Record<string, boolean>>(() =>
+    NotificationSettingsService.getSettings()
+  );
+
+  // Sync notification toggles with global event
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Record<string, boolean>>;
+      if (customEvent.detail) {
+        setNotifs(customEvent.detail);
+      } else {
+        setNotifs(NotificationSettingsService.getSettings());
+      }
+    };
+    window.addEventListener('prayer_notifications_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('prayer_notifications_updated', handleUpdate);
+    };
+  }, []);
 
   // Calculate or fetch prayer times
   useEffect(() => {
@@ -89,7 +118,7 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
 
           const hoursLeft = Math.floor(minDiff / 60);
           const minsLeft = minDiff % 60;
-          const timeRemaining = `${hoursLeft > 0 ? `${hoursLeft} sa ` : ''}${minsLeft} dk`;
+          const timeRemaining = `${hoursLeft > 0 ? `${hoursLeft} sa ` : ''}${minsLeft} dk kaldı`;
 
           setData({
             city: currentCity.name,
@@ -118,12 +147,11 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
   }, [currentCity]);
 
   const toggleNotif = async (item: PrayerTimeItem) => {
-    const key = item.name;
-    const newState = !notifs[key];
-    setNotifs((prev) => ({ ...prev, [key]: newState }));
+    HapticFeedback.light();
+    const newState = NotificationSettingsService.togglePrayer(item.name);
+    setNotifs((prev) => ({ ...prev, [item.name]: newState }));
 
     if (newState) {
-      // Send a test push for this prayer time
       await ApiService.sendPrayerNotificationAlert({
         prayerName: item.turkishName,
         cityName: currentCity.name,
@@ -132,151 +160,189 @@ export const PrayerTimesWidget: React.FC<PrayerTimesWidgetProps> = ({
     }
   };
 
-  const playAzanSample = () => {
-    setIsPlayingAzan(!isPlayingAzan);
-    if (!isPlayingAzan) {
-      // Audio notification beep or audio web audio synth
-      try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.8);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 1.2);
-      } catch (e) {}
-    }
-  };
-
   const getPrayerIcon = (id: string) => {
     switch (id) {
-      case 'imsak': return <Moon className="w-5 h-5 text-indigo-400" />;
-      case 'gunes': return <Sunrise className="w-5 h-5 text-amber-400" />;
-      case 'ogle': return <Sun className="w-5 h-5 text-amber-500" />;
-      case 'ikindi': return <Sun className="w-5 h-5 text-orange-400" />;
-      case 'aksam': return <Sunset className="w-5 h-5 text-rose-400" />;
-      case 'yatsi': return <Moon className="w-5 h-5 text-emerald-300" />;
-      default: return <Clock className="w-5 h-5 text-emerald-500" />;
+      case 'imsak': return <Moon className="w-4 h-4 text-indigo-400" />;
+      case 'gunes': return <Sunrise className="w-4 h-4 text-amber-400" />;
+      case 'ogle': return <Sun className="w-4 h-4 text-amber-500" />;
+      case 'ikindi': return <Sun className="w-4 h-4 text-orange-400" />;
+      case 'aksam': return <Sunset className="w-4 h-4 text-rose-400" />;
+      case 'yatsi': return <Moon className="w-4 h-4 text-emerald-300" />;
+      default: return <Clock className="w-4 h-4 text-emerald-500" />;
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Next Prayer Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white p-6 sm:p-8 shadow-xl shadow-emerald-950/15 border border-emerald-800/40">
-        {/* Background Islamic Pattern Elements */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 rounded-full bg-teal-500/10 blur-2xl pointer-events-none" />
+  const nextPrayer = data?.nextPrayer;
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+  return (
+    <div className="space-y-2.5">
+      {/* Compact Next Prayer Hero Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-4 sm:p-5 shadow-md shadow-emerald-950/10 border border-emerald-800/40">
+        {/* Subtle decorative glow */}
+        <div className="absolute top-0 right-0 -mt-6 -mr-6 w-36 h-36 rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Left: Location & Next Prayer Info */}
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-emerald-300 text-xs font-semibold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Vakit Takibi • {currentCity.name}</span>
+            <div className="flex items-center gap-2 flex-wrap text-emerald-300 text-[11px] font-semibold">
+              <button
+                onClick={onOpenCityPicker}
+                className="hover:text-amber-300 transition-colors flex items-center gap-1 group"
+                title="Şehir veya Konum Değiştir"
+              >
+                <MapPin className="w-3 h-3 text-amber-300 group-hover:scale-110 transition-transform" />
+                <span className="font-bold underline decoration-dotted underline-offset-2">
+                  {currentCity.district ? `${currentCity.district}, ${currentCity.name}` : currentCity.name}
+                  {currentCity.postcode ? ` (${currentCity.postcode})` : ''}
+                </span>
+                <span className="text-[9px] opacity-75 font-normal ml-0.5">• Değiştir</span>
+              </button>
+              <span className="text-emerald-500/80">•</span>
+              <span className="text-emerald-200/70">{data?.hijriDate || ''}</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-baseline gap-3">
-              <span>{data?.nextPrayer ? data.nextPrayer.turkishName : 'Namaz Vakti'}</span>
-              <span className="text-xl sm:text-2xl font-normal text-emerald-200/80 font-arabic">
-                {data?.nextPrayer?.arabicName}
+
+            <div className="flex items-baseline gap-3 flex-wrap pt-0.5">
+              <span className="text-xs uppercase tracking-wider font-bold text-amber-300 bg-amber-400/15 px-2 py-0.5 rounded-md border border-amber-400/20">
+                Sıradaki Vakit
               </span>
-            </h2>
-            <p className="text-slate-300 text-sm flex items-center gap-2">
-              <span>Vakte Kalan Süre:</span>
-              <span className="font-bold text-amber-300 text-base">{data?.timeRemaining || 'Hesaplanıyor...'}</span>
-            </p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-baseline gap-2">
+                <span>{nextPrayer ? nextPrayer.turkishName : 'Namaz Vakti'}</span>
+                {nextPrayer?.arabicName && (
+                  <span className="text-lg sm:text-xl font-normal text-emerald-200/75 font-arabic">
+                    {nextPrayer.arabicName}
+                  </span>
+                )}
+              </h2>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-emerald-950/80 border border-emerald-700/50 rounded-xl px-4 py-2.5 backdrop-blur-md">
-              <span className="text-xs text-emerald-300/80 block">Vakit Saati</span>
-              <span className="text-2xl font-black tracking-tight text-white">
-                {data?.nextPrayer ? data.nextPrayer.time : '--:--'}
+          {/* Right: Time, Countdown & Expand Toggle */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap pt-1 sm:pt-0">
+            {/* Prayer Hour Badge */}
+            <div className="bg-emerald-950/80 border border-emerald-700/50 rounded-xl px-3.5 py-1.5 backdrop-blur-xs text-center min-w-[76px]">
+              <span className="text-[10px] text-emerald-300/80 block uppercase font-bold tracking-wider">
+                Vakit Saati
+              </span>
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-white">
+                {nextPrayer ? nextPrayer.time : '--:--'}
               </span>
             </div>
 
+            {/* Countdown Badge */}
+            <div className="bg-amber-500/15 border border-amber-400/30 rounded-xl px-3.5 py-1.5 backdrop-blur-xs text-center min-w-[100px]">
+              <span className="text-[10px] text-amber-300/90 block uppercase font-bold tracking-wider">
+                Kalan Süre
+              </span>
+              <span className="text-sm sm:text-base font-extrabold tracking-tight text-amber-200">
+                {data?.timeRemaining || 'Hesaplanıyor...'}
+              </span>
+            </div>
+
+            {/* Toggle 6 Times Button */}
             <button
-              id="prayer-azan-btn"
-              onClick={playAzanSample}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border font-medium text-xs transition-all ${
-                isPlayingAzan
-                  ? 'bg-amber-500 text-white border-amber-400 shadow-md shadow-amber-500/30'
-                  : 'bg-emerald-800/60 hover:bg-emerald-700/70 text-emerald-100 border-emerald-600/40'
-              }`}
+              onClick={() => setShowAllTimes(!showAllTimes)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-800/70 hover:bg-emerald-700/80 text-emerald-100 text-xs font-bold border border-emerald-600/40 transition-all active:scale-95"
+              title={showAllTimes ? 'Vakitleri Gizle' : 'Tüm 6 Vakti Göster'}
             >
-              {isPlayingAzan ? <Volume2 className="w-4 h-4 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
-              <span>{isPlayingAzan ? 'Ezan Dinletisi Aktif' : 'Ezan Sesi'}</span>
+              <span>{showAllTimes ? 'Gizle' : 'Tüm Vakitler'}</span>
+              {showAllTimes ? (
+                <ChevronUp className="w-3.5 h-3.5 text-amber-300" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-amber-300" />
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* 6 Prayer Times Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {loading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-          ))
-        ) : (
-          data?.items.map((item) => {
-            const isNext = item.isNext;
-            return (
-              <div
-                key={item.id}
-                className={`relative rounded-xl p-4 transition-all duration-200 flex flex-col justify-between border ${
-                  isNext
-                    ? 'bg-gradient-to-b from-emerald-50 to-teal-50/70 dark:from-emerald-950/40 dark:to-teal-950/30 border-emerald-400 dark:border-emerald-600 shadow-md shadow-emerald-500/10 ring-2 ring-emerald-500/20'
-                    : item.isPassed
-                    ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 text-slate-500 dark:text-slate-400'
-                    : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-xs hover:border-emerald-200 dark:hover:border-emerald-800'
-                }`}
+      {/* Expandable 6 Prayer Times Section */}
+      {showAllTimes && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-200 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Bugünün Namaz Vakitleri ({currentCity.name})
+            </span>
+            <div className="flex items-center gap-3">
+              {onOpenIbadet && (
+                <button
+                  onClick={onOpenIbadet}
+                  className="text-[11px] text-teal-700 dark:text-teal-400 font-bold hover:underline"
+                >
+                  İbadet Çetelesi →
+                </button>
+              )}
+              <button
+                onClick={onOpenQibla}
+                className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
               >
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <span className="p-1.5 rounded-lg bg-white dark:bg-slate-800 shadow-2xs border border-slate-100 dark:border-slate-700">
-                    {getPrayerIcon(item.id)}
-                  </span>
-                  <button
-                    onClick={() => toggleNotif(item)}
-                    className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 transition-colors"
-                    title="Bildirim Ayarı"
+                <Compass className="w-3 h-3" />
+                <span>Kıble Pusulası</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-16 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              ))
+            ) : (
+              data?.items.map((item) => {
+                const isNext = item.isNext;
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl p-2.5 transition-all flex flex-col justify-between border ${
+                      isNext
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 dark:border-emerald-600 shadow-xs ring-1 ring-emerald-500/20'
+                        : item.isPassed
+                        ? 'bg-slate-50/70 dark:bg-slate-850 border-slate-200/70 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-2xs'
+                    }`}
                   >
-                    {notifs[item.name] !== false ? (
-                      <Bell className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    ) : (
-                      <BellOff className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
-                    )}
-                  </button>
-                </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="p-1 rounded-md bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shrink-0">
+                          {getPrayerIcon(item.id)}
+                        </span>
+                        <span className={`text-xs font-bold ${isNext ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                          {item.turkishName}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => toggleNotif(item)}
+                        className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-0.5 transition-colors"
+                        title={`${item.turkishName} Bildirimi`}
+                      >
+                        {notifs[item.name] !== false ? (
+                          <Bell className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <BellOff className="w-3 h-3 text-slate-300 dark:text-slate-600" />
+                        )}
+                      </button>
+                    </div>
 
-                {/* Body */}
-                <div className="mt-3">
-                  <div className="flex items-baseline justify-between">
-                    <span className={`text-xs font-semibold uppercase tracking-wider ${isNext ? 'text-emerald-800 dark:text-emerald-300 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
-                      {item.turkishName}
-                    </span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500 font-arabic">{item.arabicName}</span>
+                    <div className="mt-1.5 flex items-baseline justify-between">
+                      <span className={`text-base font-extrabold tracking-tight ${isNext ? 'text-emerald-950 dark:text-emerald-100 font-black' : 'text-slate-900 dark:text-slate-100'}`}>
+                        {item.time}
+                      </span>
+                      {isNext ? (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-600 text-white font-bold">
+                          Sıradaki
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-arabic">
+                          {item.arabicName}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className={`text-xl font-extrabold tracking-tight mt-0.5 ${isNext ? 'text-emerald-950 dark:text-emerald-100 font-black' : 'text-slate-800 dark:text-slate-100'}`}>
-                    {item.time}
-                  </div>
-                </div>
-
-                {/* Next Badge */}
-                {isNext && (
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-xs whitespace-nowrap">
-                    Sıradaki
-                  </span>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

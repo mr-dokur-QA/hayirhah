@@ -3,7 +3,6 @@ import { Header } from './components/Header';
 import { PrayerTimesWidget } from './components/PrayerTimesWidget';
 import { IbadetTracker } from './components/IbadetTracker';
 import { GroupManager } from './components/GroupManager';
-import { QuranReader } from './components/QuranReader';
 import { ArabicTextViewer } from './components/ArabicTextViewer';
 import { QiblaFinder } from './components/QiblaFinder';
 import { Zikirmatik } from './components/Zikirmatik';
@@ -17,6 +16,7 @@ import { getPrayerTimesForLocation } from './services/prayerTimeService';
 import { detectUserLocation } from './services/locationService';
 import { NativeMobile } from './services/nativeMobile';
 import { HapticFeedback } from './services/haptics';
+import { NotificationSettingsService } from './services/notificationSettings';
 import { Clock, CheckSquare, Users, BookOpen, Compass, Sparkles, Quote, Flame, Bell, X, CheckCircle, MapPin, Navigation, Loader2 } from 'lucide-react';
 
 interface ActivePrayerAlert {
@@ -29,7 +29,7 @@ interface ActivePrayerAlert {
 }
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<'vakitler' | 'ibadet' | 'gruplar' | 'kuran' | 'dualar' | 'kible_zikir'>('vakitler');
+  const [activeTab, setActiveTab] = useState<'vakitler' | 'ibadet' | 'gruplar' | 'dualar' | 'kible_zikir'>('vakitler');
   
   // Initialize current city from saved location in localStorage or default to Istanbul
   const [currentCity, setCurrentCity] = useState<CityLocation>(() => {
@@ -49,6 +49,7 @@ export function App() {
 
   // Auto-location detection states
   const [isAutoDetectingLocation, setIsAutoDetectingLocation] = useState(false);
+  const [initialPermissionDenied, setInitialPermissionDenied] = useState(false);
   const [locationToast, setLocationToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
   // Auto-detect user's real location (GPS/IP) on initial mount
@@ -66,7 +67,13 @@ export function App() {
           if (isMounted && res.city) {
             setCurrentCity(res.city);
             sessionStorage.setItem('hayirhah_session_auto_located', 'true');
-            if (res.source === 'gps' || res.source === 'ip') {
+            if (res.permissionDenied) {
+              setInitialPermissionDenied(true);
+              setLocationToast({
+                message: 'Konum izni verilmedi. Şehir, ilçe veya posta kodunuzla manuel konum belirleyebilirsiniz.',
+                type: 'info',
+              });
+            } else if (res.source === 'gps' || res.source === 'ip') {
               setLocationToast({
                 message: `📍 Konumunuz güncellendi: ${res.city.name} (${res.city.country})`,
                 type: 'success',
@@ -137,9 +144,6 @@ export function App() {
     const todayStr = new Date().toISOString().split('T')[0];
     return ApiService.getDailyTracking(todayStr);
   });
-
-  // Selected Juz for opening in QuranReader from Hatim groups
-  const [selectedJuzForReader, setSelectedJuzForReader] = useState<number | null>(null);
 
   // Cached prayer timings for background monitoring
   const [cachedTimings, setCachedTimings] = useState<Record<string, string> | null>(null);
@@ -266,11 +270,17 @@ export function App() {
         const notificationKey = `${todayStr}_${currentCity.name}_${prayer.key}`;
 
         if (cleanPrayerTime === currentTimeStr && !notifiedList.includes(notificationKey)) {
-          // Mark as notified in storage
+          // Mark as notified in storage regardless so it does not repeat
           notifiedList.push(notificationKey);
           try {
             localStorage.setItem(`hayirhah_notified_${todayStr}`, JSON.stringify(notifiedList));
           } catch (e) {}
+
+          // Check if notification is enabled for this specific prayer time
+          if (!NotificationSettingsService.isPrayerEnabled(prayer.timingKey)) {
+            console.log(`🔕 [BACKGROUND PRAYER TASK] Bildirim kapalı: ${prayer.turkishName} (${cleanPrayerTime})`);
+            continue;
+          }
 
           console.log(`🔔 [BACKGROUND PRAYER TASK] Vakit girdi: ${prayer.turkishName} (${cleanPrayerTime}) - ${currentCity.name}`);
 
@@ -321,12 +331,11 @@ export function App() {
   }, [cachedTimings, currentCity]);
 
   const navItems = [
-    { id: 'vakitler', label: 'Vakitler', icon: <Clock className="w-4 h-4" /> },
-    { id: 'ibadet', label: 'İbadet Çetelesi', icon: <CheckSquare className="w-4 h-4" /> },
-    { id: 'gruplar', label: 'Dua Halkaları', icon: <Users className="w-4 h-4" /> },
-    { id: 'kuran', label: "Kur'an-ı Kerîm", icon: <BookOpen className="w-4 h-4" /> },
-    { id: 'dualar', label: 'Mübarek Dualar', icon: <Sparkles className="w-4 h-4" /> },
-    { id: 'kible_zikir', label: 'Kıble & Zikir', icon: <Compass className="w-4 h-4" /> },
+    { id: 'vakitler', label: 'İbadet Takibi', shortLabel: 'İbadet', icon: <Clock className="w-4 h-4" /> },
+    { id: 'ibadet', label: 'İbadet Çetelesi', shortLabel: 'Çetele', icon: <CheckSquare className="w-4 h-4" /> },
+    { id: 'gruplar', label: 'Dua Halkaları', shortLabel: 'Halkalar', icon: <Users className="w-4 h-4" /> },
+    { id: 'dualar', label: 'Mübarek Dualar', shortLabel: 'Dualar', icon: <Sparkles className="w-4 h-4" /> },
+    { id: 'kible_zikir', label: 'Kıble & Zikir', shortLabel: 'Kıble', icon: <Compass className="w-4 h-4" /> },
   ] as const;
 
   const completedFard = Object.values(todayTracking.fardPrayers || {}).filter((p) => p.isCompleted).length;
@@ -347,22 +356,28 @@ export function App() {
         onToggleNightMode={() => setIsNightMode((prev) => !prev)}
       />
 
-      {/* Real-time Prayer Time Notification Alert Banner */}
+      {/* Location Status / Permission Denied Notification Alert Banner */}
       {locationToast && (
-        <div className="bg-emerald-800 text-white text-xs py-2 px-4 flex items-center justify-between gap-2 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
+        <div
+          className={`${
+            locationToast.type === 'info'
+              ? 'bg-amber-600 dark:bg-amber-700 text-white'
+              : 'bg-emerald-800 text-white'
+          } text-xs py-2 px-4 flex items-center justify-between gap-2 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200`}
+        >
           <div className="flex items-center gap-2 max-w-6xl mx-auto">
-            <MapPin className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+            <MapPin className="w-3.5 h-3.5 text-amber-300 animate-bounce shrink-0" />
             <span className="font-semibold">{locationToast.message}</span>
             <button
               onClick={() => setIsCityPickerOpen(true)}
-              className="ml-2 text-[10px] uppercase font-bold underline text-emerald-200 hover:text-white"
+              className="ml-2 text-[10px] uppercase font-bold underline text-amber-100 hover:text-white shrink-0"
             >
-              Değiştir
+              {locationToast.type === 'info' ? 'Manuel Konum Gir' : 'Değiştir'}
             </button>
           </div>
           <button
             onClick={() => setLocationToast(null)}
-            className="text-emerald-200 hover:text-white text-xs font-bold"
+            className="text-white/80 hover:text-white text-xs font-bold shrink-0"
           >
             ✕
           </button>
@@ -450,13 +465,46 @@ export function App() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6 pb-24 md:pb-12">
-        {/* Tab 1: Vakitler Dashboard */}
+        {/* Tab 1: İbadet Takibi (Ana Ekran) */}
         {activeTab === 'vakitler' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Ana Ekran Başlığı: İbadet Takibi */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-2xl bg-emerald-800 text-white shadow-xs">
+                    <CheckSquare className="w-5 h-5 text-emerald-300" />
+                  </span>
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                      İbadet Takibi
+                    </h1>
+                    <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md">
+                      Ana Ekran & Günlük Vakitler
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2">
+                  Ezan vakitleri, günlük farz ve nafile namaz çetelesi ve manevi hayat takibi
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => setActiveTab('ibadet')}
+                  className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-bold transition-all flex items-center gap-2 shadow-2xs group"
+                >
+                  <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+                  <span>Detaylı Çeteleyi Aç →</span>
+                </button>
+              </div>
+            </div>
+
             <PrayerTimesWidget
               currentCity={currentCity}
               onOpenCityPicker={() => setIsCityPickerOpen(true)}
               onOpenQibla={() => setActiveTab('kible_zikir')}
+              onOpenIbadet={() => setActiveTab('ibadet')}
             />
 
             {/* Quick Actions & Daily Hadith Bento Grid */}
@@ -585,28 +633,11 @@ export function App() {
         {/* Tab 3: Dua Kardeşliği & Hatim Grupları */}
         {activeTab === 'gruplar' && (
           <div className="animate-in fade-in duration-200">
-            <GroupManager
-              currentUser={user}
-              onOpenJuzInQuranReader={(juzNumber) => {
-                setSelectedJuzForReader(juzNumber);
-                setActiveTab('kuran');
-              }}
-            />
+            <GroupManager currentUser={user} />
           </div>
         )}
 
-        {/* Tab 4: Kur'an-ı Kerîm */}
-        {activeTab === 'kuran' && (
-          <div className="animate-in fade-in duration-200">
-            <QuranReader
-              initialJuz={selectedJuzForReader}
-              onClearInitial={() => setSelectedJuzForReader(null)}
-              isNightMode={isNightMode}
-            />
-          </div>
-        )}
-
-        {/* Tab 5: Mübarek Dualar & Sureler */}
+        {/* Tab 4: Mübarek Dualar & Sureler */}
         {activeTab === 'dualar' && (
           <div className="animate-in fade-in duration-200">
             <ArabicTextViewer />
@@ -641,8 +672,8 @@ export function App() {
                 <div className={`p-1 rounded-lg transition-transform ${isActive ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 scale-105' : ''}`}>
                   {item.icon}
                 </div>
-                <span className="text-[9px] tracking-tight mt-0.5 truncate max-w-[48px]">
-                  {item.label}
+                <span className="text-[9px] tracking-tight mt-0.5 truncate max-w-[52px]">
+                  {item.shortLabel || item.label}
                 </span>
               </button>
             );
@@ -656,6 +687,7 @@ export function App() {
         onSelectCity={handleCitySelect}
         isOpen={isCityPickerOpen}
         onClose={() => setIsCityPickerOpen(false)}
+        initialPermissionDenied={initialPermissionDenied}
       />
 
       <SettingsModal
@@ -665,6 +697,10 @@ export function App() {
         onToggleNightMode={() => setIsNightMode((prev) => !prev)}
         currentCity={currentCity}
         onSelectCity={handleCitySelect}
+        onOpenCityPicker={() => {
+          setIsSettingsOpen(false);
+          setIsCityPickerOpen(true);
+        }}
       />
 
       <AuthModal

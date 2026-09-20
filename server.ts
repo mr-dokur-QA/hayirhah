@@ -747,7 +747,7 @@ Rabbim! Seni zikretmek, Sana şükretmek ve Sana en güzel şekilde kulluk etmek
     }
   });
 
-  // Geocoding search proxy (Search any city worldwide by name)
+  // Geocoding search proxy (Search city, district, address, or postal code worldwide)
   app.get('/api/geocode', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
@@ -756,42 +756,91 @@ Rabbim! Seni zikretmek, Sana şükretmek ve Sana en güzel şekilde kulluk etmek
         return res.json({ results: [] });
       }
 
+      // 1. Try Nominatim (OpenStreetMap) with postal code & address details
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=10&addressdetails=1`;
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'HayirhahApp/1.0 (Islamic Worship App)',
-          'Accept-Language': 'tr,en;q=0.9',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
+      let nominatimSucceeded = false;
 
-      if (response.ok) {
-        const data = await response.json();
-        const results = (data || []).map((item: any) => {
-          const address = item.address || {};
-          const rawCity = address.city || address.town || address.village || address.suburb || address.county || item.name;
-          const rawState = address.state || address.province || '';
-          let rawCountry = address.country || '';
-
-          if (rawCountry === 'United States' || rawCountry === 'USA') {
-            rawCountry = rawState ? `ABD (${rawState})` : 'ABD';
-          } else if (rawCountry === 'United Kingdom' || rawCountry === 'UK') {
-            rawCountry = 'İngiltere';
-          } else if (rawCountry === 'Germany') {
-            rawCountry = 'Almanya';
-          }
-
-          return {
-            name: rawCity,
-            state: rawState,
-            country: rawCountry,
-            latitude: parseFloat(item.lat),
-            longitude: parseFloat(item.lon),
-            displayName: item.display_name,
-          };
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'HayirhahApp/1.0 (Islamic Worship App; contact@hayirhah.app)',
+            'Accept-Language': 'tr,en;q=0.9',
+          },
+          signal: AbortSignal.timeout(6000),
         });
-        return res.json({ results });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            nominatimSucceeded = true;
+            const results = data.map((item: any) => {
+              const address = item.address || {};
+              const rawDistrict = address.suburb || address.district || address.town || address.neighbourhood || address.quarter || '';
+              const rawCity = address.city || address.province || address.state || address.municipality || address.county || item.name;
+              const rawState = address.state || address.province || address.region || '';
+              const rawPostcode = address.postcode || '';
+              let rawCountry = address.country || '';
+
+              if (rawCountry === 'United States' || rawCountry === 'USA' || rawCountry === 'Amerika Birleşik Devletleri') {
+                rawCountry = rawState ? `ABD (${rawState})` : 'ABD';
+              } else if (rawCountry === 'United Kingdom' || rawCountry === 'UK') {
+                rawCountry = 'İngiltere';
+              } else if (rawCountry === 'Germany') {
+                rawCountry = 'Almanya';
+              }
+
+              // Determine clear readable title
+              let displayNameTitle = item.name;
+              if (rawDistrict && rawCity && rawDistrict.toLowerCase() !== rawCity.toLowerCase()) {
+                displayNameTitle = `${rawDistrict}, ${rawCity}`;
+              } else if (rawCity) {
+                displayNameTitle = rawCity;
+              }
+
+              return {
+                name: displayNameTitle,
+                district: rawDistrict || undefined,
+                postcode: rawPostcode || undefined,
+                state: rawState || undefined,
+                country: rawCountry || 'Dünya',
+                latitude: parseFloat(item.lat),
+                longitude: parseFloat(item.lon),
+                displayName: item.display_name,
+              };
+            });
+            return res.json({ results });
+          }
+        }
+      } catch (nomErr) {
+        // Fall through to Open-Meteo fallback
       }
+
+      // 2. Fallback: Open-Meteo Geocoding API (Ultra-fast, reliable backup)
+      if (!nominatimSucceeded) {
+        const fallbackUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=tr&format=json`;
+        const fbRes = await fetch(fallbackUrl, { signal: AbortSignal.timeout(5000) });
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          if (Array.isArray(fbData.results) && fbData.results.length > 0) {
+            const results = fbData.results.map((item: any) => {
+              let country = item.country || '';
+              if (country === 'United States') country = item.admin1 ? `ABD (${item.admin1})` : 'ABD';
+              return {
+                name: item.name,
+                district: item.admin2 || undefined,
+                postcode: item.postcodes?.[0] || undefined,
+                state: item.admin1 || undefined,
+                country: country || 'Dünya',
+                latitude: item.latitude,
+                longitude: item.longitude,
+                displayName: [item.name, item.admin2, item.admin1, country].filter(Boolean).join(', '),
+              };
+            });
+            return res.json({ results });
+          }
+        }
+      }
+
       res.json({ results: [] });
     } catch (err: any) {
       res.json({ results: [] });

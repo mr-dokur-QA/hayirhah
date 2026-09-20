@@ -1,9 +1,10 @@
-import { CityLocation, TURKEY_CITIES, WORLD_CITIES } from '../data/islamicData';
+import { CityLocation, TURKEY_CITIES, TURKEY_DISTRICTS, WORLD_CITIES } from '../data/islamicData';
 
 export interface LocationDetectionResult {
   city: CityLocation;
   source: 'gps' | 'ip' | 'cache' | 'default';
   message: string;
+  permissionDenied?: boolean;
 }
 
 /**
@@ -152,6 +153,8 @@ export async function reverseGeocodeCoordinates(
  * Automatically detects user location using GPS (first priority) or IP (fallback)
  */
 export async function detectUserLocation(): Promise<LocationDetectionResult> {
+  let wasPermissionDenied = false;
+
   // Check GPS via navigator.geolocation first
   if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
     try {
@@ -162,7 +165,7 @@ export async function detectUserLocation(): Promise<LocationDetectionResult> {
             reject,
             {
               enableHighAccuracy: true,
-              timeout: 9000,
+              timeout: 8000,
               maximumAge: 60000, // 1 minute cache
             }
           );
@@ -182,8 +185,12 @@ export async function detectUserLocation(): Promise<LocationDetectionResult> {
         city,
         source: 'gps',
         message: `GPS ile tespit edildi: ${city.name}, ${city.country}`,
+        permissionDenied: false,
       };
     } catch (gpsError: any) {
+      if (gpsError?.code === 1 || gpsError?.message?.toLowerCase().includes('denied')) {
+        wasPermissionDenied = true;
+      }
       console.warn('GPS location request failed or denied:', gpsError?.message);
     }
   }
@@ -215,6 +222,7 @@ export async function detectUserLocation(): Promise<LocationDetectionResult> {
           city,
           source: 'ip',
           message: `İnternet konumu ile tespit edildi: ${city.name}, ${city.country}`,
+          permissionDenied: wasPermissionDenied,
         };
       }
     }
@@ -230,6 +238,7 @@ export async function detectUserLocation(): Promise<LocationDetectionResult> {
         city: JSON.parse(saved),
         source: 'cache',
         message: 'Kayıtlı konum kullanılıyor',
+        permissionDenied: wasPermissionDenied,
       };
     }
   } catch (e) {}
@@ -237,12 +246,13 @@ export async function detectUserLocation(): Promise<LocationDetectionResult> {
   return {
     city: TURKEY_CITIES[0],
     source: 'default',
-    message: 'Varsayılan şehir seçildi',
+    message: wasPermissionDenied ? 'Konum izni verilmedi (Varsayılan İstanbul)' : 'Varsayılan şehir seçildi',
+    permissionDenied: wasPermissionDenied,
   };
 }
 
 /**
- * Searches any city or town worldwide by name
+ * Searches any city, district, address, or postal code worldwide
  */
 export async function searchCitiesWorldwide(
   query: string
@@ -250,50 +260,50 @@ export async function searchCitiesWorldwide(
   const trimmed = query.trim().toLowerCase();
   if (trimmed.length < 2) return [];
 
-  // Local filter from predefined list first
-  const localMatches = [...WORLD_CITIES, ...TURKEY_CITIES].filter(
+  // 1. Search local predefined comprehensive datasets (Districts, Cities, World)
+  const allPredefined = [...TURKEY_DISTRICTS, ...TURKEY_CITIES, ...WORLD_CITIES];
+  const localMatches = allPredefined.filter(
     (c) =>
       c.name.toLowerCase().includes(trimmed) ||
-      (c.country && c.country.toLowerCase().includes(trimmed)) ||
-      (c.state && c.state.toLowerCase().includes(trimmed))
+      (c.district && c.district.toLowerCase().includes(trimmed)) ||
+      (c.postcode && c.postcode.toLowerCase().includes(trimmed)) ||
+      (c.state && c.state.toLowerCase().includes(trimmed)) ||
+      (c.country && c.country.toLowerCase().includes(trimmed))
   );
 
-  // If we already have strong local matches (>= 3), return them quickly
-  if (localMatches.length >= 4) {
-    return localMatches;
-  }
-
-  // Search online worldwide via /api/geocode
+  // 2. Query online geocoding API (/api/geocode) for any city, district, address, or postal code
   try {
     const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
     if (res.ok) {
       const data = await res.json();
-      const results: CityLocation[] = (data?.results || []).map((r: any) => ({
+      const onlineResults: CityLocation[] = (data?.results || []).map((r: any) => ({
         name: r.name,
-        country: r.country || 'Dünya',
+        district: r.district,
+        postcode: r.postcode,
         state: r.state,
+        country: r.country || 'Dünya',
         latitude: r.latitude,
         longitude: r.longitude,
+        fullAddress: r.displayName,
       }));
 
-      // Combine local unique and online matches
+      // Combine local and online results avoiding duplicates
       const combined = [...localMatches];
-      for (const item of results) {
-        if (
-          !combined.some(
-            (c) =>
-              c.name.toLowerCase() === item.name.toLowerCase() &&
-              c.country.toLowerCase() === item.country.toLowerCase()
-          )
-        ) {
+      for (const item of onlineResults) {
+        const isDuplicate = combined.some(
+          (c) =>
+            (Math.abs(c.latitude - item.latitude) < 0.05 && Math.abs(c.longitude - item.longitude) < 0.05) ||
+            (c.name.toLowerCase() === item.name.toLowerCase() && c.country.toLowerCase() === item.country.toLowerCase())
+        );
+        if (!isDuplicate) {
           combined.push(item);
         }
       }
-      return combined.slice(0, 15);
+      return combined.slice(0, 20);
     }
   } catch (e) {
     console.warn('Online geocode search failed', e);
   }
 
-  return localMatches;
+  return localMatches.slice(0, 20);
 }

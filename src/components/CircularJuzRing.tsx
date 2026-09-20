@@ -10,7 +10,7 @@ interface CircularJuzRingProps {
   onAssignTask: (groupId: string, taskIndex: number, handle?: string) => void;
   onCompleteTask: (groupId: string, taskIndex: number) => void;
   onUncompleteTask: (groupId: string, taskIndex: number) => void;
-  onOpenJuzInQuranReader?: (juzNumber: number) => void;
+  onReleaseTask?: (groupId: string, taskIndex: number) => void;
   onOpenCelebrationModal?: () => void;
 }
 
@@ -20,7 +20,7 @@ export const CircularJuzRing: React.FC<CircularJuzRingProps> = ({
   onAssignTask,
   onCompleteTask,
   onUncompleteTask,
-  onOpenJuzInQuranReader,
+  onReleaseTask,
   onOpenCelebrationModal,
 }) => {
   const [selectedTaskIndex, setSelectedTaskIndex] = useState<number | null>(1);
@@ -386,7 +386,7 @@ export const CircularJuzRing: React.FC<CircularJuzRingProps> = ({
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {group.type === 'hatim'
-                    ? `Kur'an-ı Kerim ${selectedTask.taskIndex}. Cüz Tilaveti (20 Sayfa)`
+                    ? `Kur'an-ı Kerim ${selectedTask.taskIndex}. Cüzü`
                     : `${group.title} kapsamında parça`}
                 </p>
               </div>
@@ -431,58 +431,10 @@ export const CircularJuzRing: React.FC<CircularJuzRingProps> = ({
               )}
             </div>
 
-            {/* Direct Quran Reading Link */}
-            {group.type === 'hatim' && onOpenJuzInQuranReader && (
-              <button
-                onClick={() => onOpenJuzInQuranReader(selectedTask.taskIndex)}
-                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs transition-all shadow-md shadow-emerald-900/20 flex items-center justify-center gap-2 group"
-              >
-                <BookOpen className="w-4 h-4 text-emerald-300 group-hover:scale-110 transition-transform" />
-                <span>{selectedTask.taskIndex}. Cüzü Kur'an-ı Kerim Okuyucuda Aç (Arapça & Meal)</span>
-              </button>
-            )}
-
-            {/* Interactive Actions based on ownership and status */}
-            <div className="pt-2">
-              {selectedTask.status === 'completed' ? (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
-                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Bu cüzün tilaveti tamamlandı. Allah kabul eylesin.</span>
-                  </div>
-                  {isTaskOwnedByCurrentUser(selectedTask) && (
-                    <button
-                      onClick={() => onUncompleteTask(group.id, selectedTask.taskIndex)}
-                      className="text-xs text-slate-500 hover:text-rose-600 font-semibold underline px-2"
-                    >
-                      Geri Al
-                    </button>
-                  )}
-                </div>
-              ) : selectedTask.status === 'assigned' ? (
-                isTaskOwnedByCurrentUser(selectedTask) ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        HapticFeedback.success();
-                        onCompleteTask(group.id, selectedTask.taskIndex);
-                      }}
-                      className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Tamamlandı Olarak İşaretle ✓</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
-                      <span>Bu cüz {selectedTask.assignedToUsername} tarafından okunmaktadır.</span>
-                    </div>
-                  </div>
-                )
-              ) : isAssigningSpecific ? (
-                /* Specific Assign form */
+            {/* Interactive Direct Status Actions: Okundu, Okunuyor, Atama, Boşalt */}
+            <div className="pt-2 space-y-3">
+              {/* If specific assign input mode is active */}
+              {isAssigningSpecific ? (
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 space-y-2">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Kardeşinize Cüz Atayın
@@ -508,7 +460,7 @@ export const CircularJuzRing: React.FC<CircularJuzRingProps> = ({
                         }
                       }}
                       disabled={!assigneeHandleInput.trim()}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50"
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50 transition-colors"
                     >
                       Ata
                     </button>
@@ -521,25 +473,84 @@ export const CircularJuzRing: React.FC<CircularJuzRingProps> = ({
                   </div>
                 </div>
               ) : (
-                /* Available Actions */
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onAssignTask(group.id, selectedTask.taskIndex)}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <span>Bu Cüzü Üzerime Alıyorum</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsAssigningSpecific(true);
-                      setAssigneeHandleInput('');
-                    }}
-                    className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1"
-                    title="@Kullanıcıya Ata"
-                  >
-                    <AtSign className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Başkasına Ata</span>
-                  </button>
+                <div className="space-y-2">
+                  {/* Status 1: Okundu Butonu */}
+                  {selectedTask.status === 'completed' ? (
+                    <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Okundu olarak işaretlendi ✓</span>
+                      </div>
+                      <button
+                        onClick={() => onUncompleteTask(group.id, selectedTask.taskIndex)}
+                        className="text-xs text-slate-500 hover:text-amber-700 dark:hover:text-amber-400 font-bold px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
+                        title="Tekrar Okunuyor yap"
+                      >
+                        Geri Al (Okunuyor Yap)
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        HapticFeedback.success();
+                        onCompleteTask(group.id, selectedTask.taskIndex);
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 transition-all"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Okundu Olarak İşaretle ✓</span>
+                    </button>
+                  )}
+
+                  {/* Status 2: Okunuyor / Atama Butonları */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedTask.status === 'available' ? (
+                      <button
+                        onClick={() => onAssignTask(group.id, selectedTask.taskIndex)}
+                        className="py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Okunuyor Yap (Al)</span>
+                      </button>
+                    ) : selectedTask.status === 'assigned' ? (
+                      <div className="py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center justify-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                        <span>Okunuyor</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => onUncompleteTask(group.id, selectedTask.taskIndex)}
+                        className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Okunuyor Durumuna Al</span>
+                      </button>
+                    )}
+
+                    {/* Atama Butonu */}
+                    <button
+                      onClick={() => {
+                        setIsAssigningSpecific(true);
+                        setAssigneeHandleInput('');
+                      }}
+                      className="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <AtSign className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{selectedTask.status === 'available' ? 'Kardeşe Ata' : 'Yeniden Ata'}</span>
+                    </button>
+                  </div>
+
+                  {/* Status 3: Boşa Çıkar / İptal (Eğer alınmışsa veya okunmuşsa) */}
+                  {selectedTask.status !== 'available' && onReleaseTask && (
+                    <div className="text-center pt-1">
+                      <button
+                        onClick={() => onReleaseTask(group.id, selectedTask.taskIndex)}
+                        className="text-[11px] text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 font-semibold transition-colors underline"
+                      >
+                        Cüzü Boşa Çıkar (Herkes Alabilsin)
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

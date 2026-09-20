@@ -6,7 +6,54 @@ export interface CityLocation {
   longitude: number;
   country: string;
   state?: string;
+  district?: string;
+  postcode?: string;
+  fullAddress?: string;
   isAutoDetected?: boolean;
+}
+
+/**
+ * Calculates exact spherical Qibla direction and distance from Kaaba
+ */
+export function calculateQiblaBearing(latitude: number, longitude: number): {
+  angle: number;
+  cardinal: string;
+  distanceKm: number;
+} {
+  const kaabaLat = (21.4225 * Math.PI) / 180;
+  const kaabaLng = (39.8262 * Math.PI) / 180;
+
+  const userLat = (latitude * Math.PI) / 180;
+  const userLng = (longitude * Math.PI) / 180;
+
+  const deltaLng = kaabaLng - userLng;
+  const y = Math.sin(deltaLng);
+  const x = Math.cos(userLat) * Math.tan(kaabaLat) - Math.sin(userLat) * Math.cos(deltaLng);
+
+  let qibla = (Math.atan2(y, x) * 180) / Math.PI;
+  qibla = (qibla + 360) % 360;
+  const angle = Math.round(qibla);
+
+  let cardinal = 'Güneydoğu';
+  if (angle >= 337.5 || angle < 22.5) cardinal = 'Kuzey';
+  else if (angle >= 22.5 && angle < 67.5) cardinal = 'Kuzeydoğu';
+  else if (angle >= 67.5 && angle < 112.5) cardinal = 'Doğu';
+  else if (angle >= 112.5 && angle < 157.5) cardinal = 'Güneydoğu';
+  else if (angle >= 157.5 && angle < 202.5) cardinal = 'Güney';
+  else if (angle >= 202.5 && angle < 247.5) cardinal = 'Güneybatı';
+  else if (angle >= 247.5 && angle < 292.5) cardinal = 'Batı';
+  else if (angle >= 292.5 && angle < 337.5) cardinal = 'Kuzeybatı';
+
+  const R = 6371;
+  const dLat = kaabaLat - userLat;
+  const dLon = kaabaLng - userLng;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(userLat) * Math.cos(kaabaLat) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distanceKm = Math.round(R * c);
+
+  return { angle, cardinal, distanceKm };
 }
 
 export const TURKEY_CITIES: CityLocation[] = [
@@ -89,24 +136,106 @@ export const TURKEY_CITIES: CityLocation[] = [
   { name: 'Tunceli', latitude: 39.1079, longitude: 39.5401, country: 'Türkiye' },
 ];
 
+export const TURKEY_DISTRICTS: CityLocation[] = [
+  // İzmir
+  { name: 'Bornova', district: 'Bornova', state: 'İzmir', postcode: '35040', latitude: 38.4632, longitude: 27.2185, country: 'Türkiye' },
+  { name: 'Karşıyaka', district: 'Karşıyaka', state: 'İzmir', postcode: '35530', latitude: 38.4554, longitude: 27.1127, country: 'Türkiye' },
+  { name: 'Konak', district: 'Konak', state: 'İzmir', postcode: '35220', latitude: 38.4192, longitude: 27.1287, country: 'Türkiye' },
+  { name: 'Buca', district: 'Buca', state: 'İzmir', postcode: '35390', latitude: 38.3881, longitude: 27.1788, country: 'Türkiye' },
+  { name: 'Çiğli', district: 'Çiğli', state: 'İzmir', postcode: '35620', latitude: 38.4950, longitude: 27.0600, country: 'Türkiye' },
+  { name: 'Bayraklı', district: 'Bayraklı', state: 'İzmir', postcode: '35540', latitude: 38.4619, longitude: 27.1722, country: 'Türkiye' },
+  { name: 'Gaziemir', district: 'Gaziemir', state: 'İzmir', postcode: '35410', latitude: 38.3200, longitude: 27.1300, country: 'Türkiye' },
+  { name: 'Menemen', district: 'Menemen', state: 'İzmir', postcode: '35660', latitude: 38.6000, longitude: 27.0667, country: 'Türkiye' },
+  { name: 'Torbalı', district: 'Torbalı', state: 'İzmir', postcode: '35860', latitude: 38.1500, longitude: 27.3600, country: 'Türkiye' },
+  { name: 'Urla', district: 'Urla', state: 'İzmir', postcode: '35430', latitude: 38.3200, longitude: 26.7700, country: 'Türkiye' },
+  { name: 'Çeşme', district: 'Çeşme', state: 'İzmir', postcode: '35930', latitude: 38.3236, longitude: 26.3047, country: 'Türkiye' },
+
+  // İstanbul
+  { name: 'Kadıköy', district: 'Kadıköy', state: 'İstanbul', postcode: '34710', latitude: 40.9927, longitude: 29.0277, country: 'Türkiye' },
+  { name: 'Üsküdar', district: 'Üsküdar', state: 'İstanbul', postcode: '34664', latitude: 41.0264, longitude: 29.0163, country: 'Türkiye' },
+  { name: 'Fatih', district: 'Fatih', state: 'İstanbul', postcode: '34080', latitude: 41.0182, longitude: 28.9497, country: 'Türkiye' },
+  { name: 'Beşiktaş', district: 'Beşiktaş', state: 'İstanbul', postcode: '34353', latitude: 41.0428, longitude: 29.0077, country: 'Türkiye' },
+  { name: 'Beylikdüzü', district: 'Beylikdüzü', state: 'İstanbul', postcode: '34520', latitude: 41.0016, longitude: 28.6419, country: 'Türkiye' },
+  { name: 'Şişli', district: 'Şişli', state: 'İstanbul', postcode: '34360', latitude: 41.0600, longitude: 28.9870, country: 'Türkiye' },
+  { name: 'Bakırköy', district: 'Bakırköy', state: 'İstanbul', postcode: '34140', latitude: 40.9780, longitude: 28.8720, country: 'Türkiye' },
+  { name: 'Ümraniye', district: 'Ümraniye', state: 'İstanbul', postcode: '34760', latitude: 41.0250, longitude: 29.1170, country: 'Türkiye' },
+  { name: 'Pendik', district: 'Pendik', state: 'İstanbul', postcode: '34890', latitude: 40.8750, longitude: 29.2330, country: 'Türkiye' },
+  { name: 'Maltepe', district: 'Maltepe', state: 'İstanbul', postcode: '34840', latitude: 40.9250, longitude: 29.1330, country: 'Türkiye' },
+  { name: 'Kartal', district: 'Kartal', state: 'İstanbul', postcode: '34860', latitude: 40.8900, longitude: 29.1850, country: 'Türkiye' },
+  { name: 'Sarıyer', district: 'Sarıyer', state: 'İstanbul', postcode: '34450', latitude: 41.1670, longitude: 29.0500, country: 'Türkiye' },
+  { name: 'Eyüpsultan', district: 'Eyüpsultan', state: 'İstanbul', postcode: '34050', latitude: 41.0480, longitude: 28.9340, country: 'Türkiye' },
+  { name: 'Başakşehir', district: 'Başakşehir', state: 'İstanbul', postcode: '34480', latitude: 41.0950, longitude: 28.8020, country: 'Türkiye' },
+  { name: 'Esenyurt', district: 'Esenyurt', state: 'İstanbul', postcode: '34510', latitude: 41.0340, longitude: 28.6800, country: 'Türkiye' },
+  { name: 'Ataşehir', district: 'Ataşehir', state: 'İstanbul', postcode: '34758', latitude: 40.9930, longitude: 29.1130, country: 'Türkiye' },
+  { name: 'Zeytinburnu', district: 'Zeytinburnu', state: 'İstanbul', postcode: '34020', latitude: 40.9900, longitude: 28.9000, country: 'Türkiye' },
+
+  // Ankara
+  { name: 'Çankaya', district: 'Çankaya', state: 'Ankara', postcode: '06530', latitude: 39.9208, longitude: 32.8541, country: 'Türkiye' },
+  { name: 'Keçiören', district: 'Keçiören', state: 'Ankara', postcode: '06280', latitude: 39.9984, longitude: 32.8624, country: 'Türkiye' },
+  { name: 'Yenimahalle', district: 'Yenimahalle', state: 'Ankara', postcode: '06170', latitude: 39.9678, longitude: 32.8105, country: 'Türkiye' },
+  { name: 'Mamak', district: 'Mamak', state: 'Ankara', postcode: '06260', latitude: 39.9400, longitude: 32.9200, country: 'Türkiye' },
+  { name: 'Etimesgut', district: 'Etimesgut', state: 'Ankara', postcode: '06790', latitude: 39.9500, longitude: 32.6830, country: 'Türkiye' },
+  { name: 'Sincan', district: 'Sincan', state: 'Ankara', postcode: '06930', latitude: 39.9600, longitude: 32.5800, country: 'Türkiye' },
+  { name: 'Altındağ', district: 'Altındağ', state: 'Ankara', postcode: '06050', latitude: 39.9419, longitude: 32.8544, country: 'Türkiye' },
+  { name: 'Gölbaşı', district: 'Gölbaşı', state: 'Ankara', postcode: '06830', latitude: 39.7900, longitude: 32.8100, country: 'Türkiye' },
+
+  // Bursa
+  { name: 'Osmangazi', district: 'Osmangazi', state: 'Bursa', postcode: '16010', latitude: 40.1885, longitude: 29.0610, country: 'Türkiye' },
+  { name: 'Nilüfer', district: 'Nilüfer', state: 'Bursa', postcode: '16140', latitude: 40.2144, longitude: 28.9774, country: 'Türkiye' },
+  { name: 'Yıldırım', district: 'Yıldırım', state: 'Bursa', postcode: '16300', latitude: 40.1900, longitude: 29.1100, country: 'Türkiye' },
+  { name: 'İnegöl', district: 'İnegöl', state: 'Bursa', postcode: '16400', latitude: 40.0780, longitude: 29.5130, country: 'Türkiye' },
+
+  // Antalya
+  { name: 'Muratpaşa', district: 'Muratpaşa', state: 'Antalya', postcode: '07010', latitude: 36.8867, longitude: 30.7075, country: 'Türkiye' },
+  { name: 'Konyaaltı', district: 'Konyaaltı', state: 'Antalya', postcode: '07070', latitude: 36.8700, longitude: 30.6300, country: 'Türkiye' },
+  { name: 'Kepez', district: 'Kepez', state: 'Antalya', postcode: '07060', latitude: 36.9300, longitude: 30.6900, country: 'Türkiye' },
+  { name: 'Alanya', district: 'Alanya', state: 'Antalya', postcode: '07400', latitude: 36.5438, longitude: 31.9998, country: 'Türkiye' },
+  { name: 'Manavgat', district: 'Manavgat', state: 'Antalya', postcode: '07600', latitude: 36.7860, longitude: 31.4420, country: 'Türkiye' },
+
+  // Konya
+  { name: 'Selçuklu', district: 'Selçuklu', state: 'Konya', postcode: '42100', latitude: 37.8920, longitude: 32.4820, country: 'Türkiye' },
+  { name: 'Meram', district: 'Meram', state: 'Konya', postcode: '42010', latitude: 37.8600, longitude: 32.4300, country: 'Türkiye' },
+  { name: 'Karatay', district: 'Karatay', state: 'Konya', postcode: '42020', latitude: 37.8700, longitude: 32.5300, country: 'Türkiye' },
+
+  // Gaziantep
+  { name: 'Şahinbey', district: 'Şahinbey', state: 'Gaziantep', postcode: '27070', latitude: 37.0420, longitude: 37.3750, country: 'Türkiye' },
+  { name: 'Şehitkamil', district: 'Şehitkamil', state: 'Gaziantep', postcode: '27060', latitude: 37.0800, longitude: 37.3600, country: 'Türkiye' },
+
+  // Adana
+  { name: 'Seyhan', district: 'Seyhan', state: 'Adana', postcode: '01010', latitude: 36.9914, longitude: 35.3308, country: 'Türkiye' },
+  { name: 'Çukurova', district: 'Çukurova', state: 'Adana', postcode: '01170', latitude: 37.0400, longitude: 35.2700, country: 'Türkiye' },
+
+  // Kocaeli
+  { name: 'İzmit', district: 'İzmit', state: 'Kocaeli', postcode: '41040', latitude: 40.7654, longitude: 29.9408, country: 'Türkiye' },
+  { name: 'Gebze', district: 'Gebze', state: 'Kocaeli', postcode: '41400', latitude: 40.8028, longitude: 29.4307, country: 'Türkiye' },
+];
+
 export const WORLD_CITIES: CityLocation[] = [
   // USA (Florida & major hubs)
-  { name: 'Wesley Chapel', latitude: 28.1889, longitude: -82.3534, country: 'ABD (Florida)', state: 'Florida' },
-  { name: 'Tampa', latitude: 27.9506, longitude: -82.4572, country: 'ABD (Florida)', state: 'Florida' },
-  { name: 'Orlando', latitude: 28.5383, longitude: -81.3792, country: 'ABD (Florida)', state: 'Florida' },
-  { name: 'Miami', latitude: 25.7617, longitude: -80.1918, country: 'ABD (Florida)', state: 'Florida' },
-  { name: 'Jacksonville', latitude: 30.3322, longitude: -81.6557, country: 'ABD (Florida)', state: 'Florida' },
-  { name: 'New York', latitude: 40.7128, longitude: -74.0060, country: 'ABD (New York)', state: 'New York' },
-  { name: 'Chicago', latitude: 41.8781, longitude: -87.6298, country: 'ABD (Illinois)', state: 'Illinois' },
-  { name: 'Houston', latitude: 29.7604, longitude: -95.3698, country: 'ABD (Texas)', state: 'Texas' },
-  { name: 'Dallas', latitude: 32.7767, longitude: -96.7970, country: 'ABD (Texas)', state: 'Texas' },
-  { name: 'Los Angeles', latitude: 34.0522, longitude: -118.2437, country: 'ABD (California)', state: 'California' },
-  { name: 'San Francisco', latitude: 37.7749, longitude: -122.4194, country: 'ABD (California)', state: 'California' },
-  { name: 'Washington D.C.', latitude: 38.9072, longitude: -77.0369, country: 'ABD', state: 'DC' },
-  { name: 'Boston', latitude: 42.3601, longitude: -71.0589, country: 'ABD (Massachusetts)', state: 'Massachusetts' },
-  { name: 'Atlanta', latitude: 33.7490, longitude: -84.3880, country: 'ABD (Georgia)', state: 'Georgia' },
-  { name: 'Toronto', latitude: 43.6532, longitude: -79.3832, country: 'Kanada' },
-  { name: 'Montreal', latitude: 45.5017, longitude: -73.5673, country: 'Kanada' },
+  { name: 'Wesley Chapel', postcode: '33544', latitude: 28.1889, longitude: -82.3534, country: 'ABD (Florida)', state: 'Florida' },
+  { name: 'Tampa', postcode: '33602', latitude: 27.9506, longitude: -82.4572, country: 'ABD (Florida)', state: 'Florida' },
+  { name: 'Orlando', postcode: '32801', latitude: 28.5383, longitude: -81.3792, country: 'ABD (Florida)', state: 'Florida' },
+  { name: 'Miami', postcode: '33101', latitude: 25.7617, longitude: -80.1918, country: 'ABD (Florida)', state: 'Florida' },
+  { name: 'Jacksonville', postcode: '32202', latitude: 30.3322, longitude: -81.6557, country: 'ABD (Florida)', state: 'Florida' },
+  { name: 'New York', postcode: '10001', latitude: 40.7128, longitude: -74.0060, country: 'ABD (New York)', state: 'New York' },
+  { name: 'Chicago', postcode: '60601', latitude: 41.8781, longitude: -87.6298, country: 'ABD (Illinois)', state: 'Illinois' },
+  { name: 'Houston', postcode: '77001', latitude: 29.7604, longitude: -95.3698, country: 'ABD (Texas)', state: 'Texas' },
+  { name: 'Dallas', postcode: '75201', latitude: 32.7767, longitude: -96.7970, country: 'ABD (Texas)', state: 'Texas' },
+  { name: 'Los Angeles', postcode: '90001', latitude: 34.0522, longitude: -118.2437, country: 'ABD (California)', state: 'California' },
+  { name: 'San Francisco', postcode: '94102', latitude: 37.7749, longitude: -122.4194, country: 'ABD (California)', state: 'California' },
+  { name: 'Washington D.C.', postcode: '20001', latitude: 38.9072, longitude: -77.0369, country: 'ABD', state: 'DC' },
+  { name: 'Boston', postcode: '02108', latitude: 42.3601, longitude: -71.0589, country: 'ABD (Massachusetts)', state: 'Massachusetts' },
+  { name: 'Atlanta', postcode: '30301', latitude: 33.7490, longitude: -84.3880, country: 'ABD (Georgia)', state: 'Georgia' },
+  { name: 'Toronto', postcode: 'M5H', latitude: 43.6532, longitude: -79.3832, country: 'Kanada' },
+  { name: 'Montreal', postcode: 'H2Y', latitude: 45.5017, longitude: -73.5673, country: 'Kanada' },
+  { name: 'Berlin', postcode: '10115', latitude: 52.5200, longitude: 13.4050, country: 'Almanya' },
+  { name: 'Köln', postcode: '50667', latitude: 50.9375, longitude: 6.9603, country: 'Almanya' },
+  { name: 'Frankfurt', postcode: '60311', latitude: 50.1109, longitude: 8.6821, country: 'Almanya' },
+  { name: 'Münih', postcode: '80331', latitude: 48.1351, longitude: 11.5820, country: 'Almanya' },
+  { name: 'London', postcode: 'SW1A 1AA', latitude: 51.5074, longitude: -0.1278, country: 'İngiltere' },
+  { name: 'Paris', postcode: '75001', latitude: 48.8566, longitude: 2.3522, country: 'Fransa' },
+  { name: 'Amsterdam', postcode: '1012', latitude: 52.3676, longitude: 4.9041, country: 'Hollanda' },
+  { name: 'Viyana', postcode: '1010', latitude: 48.2082, longitude: 16.3738, country: 'Avusturya' },
 
   // Holy & Islamic Heritage Cities
   { name: 'Mekke-i Mükerreme', latitude: 21.4225, longitude: 39.8262, country: 'Suudi Arabistan' },

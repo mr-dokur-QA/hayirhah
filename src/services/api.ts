@@ -389,6 +389,26 @@ export const ApiService = {
     return group!;
   },
 
+  // Release/unassign a task back to available
+  releaseTask(groupId: string, taskIndex: number): Group {
+    const groups = this.getGroups();
+    const group = groups.find((g) => g.id === groupId);
+
+    if (group && group.tasks) {
+      const task = group.tasks.find((t) => t.taskIndex === taskIndex);
+      if (task) {
+        task.status = 'available';
+        task.assignedTo = undefined;
+        task.assignedToUsername = undefined;
+        task.assignedAt = undefined;
+        task.completedAt = undefined;
+        group.currentProgress = group.tasks.filter((t) => t.status === 'completed').length;
+        this.saveGroups(groups);
+      }
+    }
+    return group!;
+  },
+
   // Numbered commitment (Tefriciye, 1000 İhlas)
   addNumberedAssignment(groupId: string, count: number, memberHandle?: string): Group {
     const groups = this.getGroups();
